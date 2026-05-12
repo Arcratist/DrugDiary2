@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true">
+        <layer-list>
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="?attr/colorSecondaryContainer" />
+                    <stroke android:width="3dp" android:color="?attr/colorPrimary" />
+                </shape>
+            </item>
+            <item android:drawable="@drawable/avatar_placeholder_4" android:top="8dp" android:bottom="8dp" android:left="8dp" android:right="8dp" />
+        </layer-list>
+    </item>
+    <item>
+        <layer-list>
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="@android:color/transparent" />
+                </shape>
+            </item>
+            <item android:drawable="@drawable/avatar_placeholder_4" />
+        </layer-list>
+    </item>
+</selector>

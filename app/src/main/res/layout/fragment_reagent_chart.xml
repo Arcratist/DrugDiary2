@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/windowBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:text="@string/reagent_colour_chart"
+            android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:id="@+id/text_reagent_guide"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="20dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="8dp" android:text="@string/reagent_marquis_note" android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="8dp" android:text="@string/reagent_mecke_note" android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="8dp" android:text="@string/reagent_mandelin_note" android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="8dp" android:text="@string/reagent_simon_note" android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>
+
+
+

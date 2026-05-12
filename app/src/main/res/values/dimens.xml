@@ -1,0 +1,21 @@
+<resources>
+    <dimen name="fab_margin">16dp</dimen>
+    <dimen name="card_corner_radius">0dp</dimen>
+    <dimen name="button_corner_radius">0dp</dimen>
+    <dimen name="component_corner_radius">0dp</dimen>
+    <dimen name="toolbar_height">56dp</dimen>
+    <dimen name="bottom_nav_height">56dp</dimen>
+    <dimen name="spacing_tiny">4dp</dimen>
+    <dimen name="spacing_small">8dp</dimen>
+    <dimen name="spacing_medium">16dp</dimen>
+    <dimen name="page_padding">16dp</dimen>
+    <dimen name="spacing_large">24dp</dimen>
+    <dimen name="text_size_micro">10sp</dimen>
+    <dimen name="text_size_small">12sp</dimen>
+    <dimen name="text_size_medium">14sp</dimen>
+    <dimen name="text_size_large">16sp</dimen>
+    <dimen name="text_size_title">16sp</dimen>
+    <dimen name="text_size_headline">22sp</dimen>
+    <dimen name="icon_size_nav">26dp</dimen>
+    <dimen name="icon_size_medium">24dp</dimen>
+</resources>

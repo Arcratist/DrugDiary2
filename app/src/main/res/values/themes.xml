@@ -1,0 +1,77 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Base.Theme.DrugDiary" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/light_accent_primary</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/light_selected</item>
+        <item name="colorOnPrimaryContainer">@color/light_text_primary</item>
+        <item name="colorSecondary">@color/light_accent_secondary</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorTertiary">@color/light_accent_highlight</item>
+        <item name="colorOnTertiary">@color/white</item>
+        <item name="android:windowBackground">@color/light_bg_primary</item>
+        <item name="colorSurface">@color/light_surface</item>
+        <item name="colorOnSurface">@color/light_text_primary</item>
+        <item name="colorSurfaceVariant">@color/light_bg_secondary</item>
+        <item name="colorOnSurfaceVariant">@color/light_text_secondary</item>
+        <item name="colorOutline">@color/light_border</item>
+        <item name="android:statusBarColor">@color/light_bg_primary</item>
+        <item name="android:navigationBarColor">@color/light_bg_primary</item>
+        <item name="android:windowLightStatusBar">true</item>
+
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.DrugDiary.Sharp</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.DrugDiary.Sharp</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.DrugDiary.Sharp</item>
+
+        <item name="materialButtonStyle">@style/Widget.DrugDiary.Button</item>
+        <item name="materialCardViewStyle">@style/Widget.DrugDiary.Card</item>
+        <item name="bottomNavigationStyle">@style/Widget.DrugDiary.BottomNavigationView</item>
+        <item name="textInputStyle">@style/Widget.DrugDiary.TextInputLayout</item>
+    </style>
+
+    <style name="Theme.DrugDiary" parent="Base.Theme.DrugDiary" />
+
+    <style name="ShapeAppearance.DrugDiary.Sharp" parent="ShapeAppearance.Material3.SmallComponent">
+        <item name="cornerSize">0dp</item>
+    </style>
+
+    <style name="TextAppearance.DrugDiary.Toolbar.Title" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textStyle">normal</item>
+        <item name="android:textSize">@dimen/text_size_title</item>
+        <item name="android:letterSpacing">0.1</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+
+    <style name="Widget.DrugDiary.Button" parent="Widget.Material3.Button">
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.DrugDiary.Sharp</item>
+    </style>
+
+    <style name="Widget.DrugDiary.Card" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardElevation">0dp</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">?attr/colorOutline</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.DrugDiary.Sharp</item>
+    </style>
+
+    <style name="Widget.DrugDiary.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="shapeAppearance">@style/ShapeAppearance.DrugDiary.Sharp</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxStrokeWidthFocused">1dp</item>
+    </style>
+
+    <style name="Widget.DrugDiary.BottomNavigationView" parent="Widget.Material3.BottomNavigationView">
+        <item name="itemActiveIndicatorStyle">@style/Widget.DrugDiary.ActiveIndicator</item>
+        <item name="itemIconSize">@dimen/icon_size_nav</item>
+        <item name="labelVisibilityMode">unlabeled</item>
+        <item name="backgroundTint">?attr/colorSurface</item>
+        <item name="itemRippleColor">@null</item>
+    </style>
+
+    <style name="Widget.DrugDiary.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">?attr/colorPrimaryContainer</item>
+        <item name="android:width">76dp</item>
+        <item name="android:height">56dp</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.DrugDiary.Sharp</item>
+    </style>
+</resources>

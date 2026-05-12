@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/ProfileSelectorFragment">
+
+    <fragment
+        android:id="@+id/ProfileSelectorFragment"
+        android:name="brettdansmith.drugdiary.ui.auth.ProfileSelectorFragment"
+        android:label=""
+        tools:layout="@layout/fragment_profile_selector">
+        <action
+            android:id="@+id/action_ProfileSelectorFragment_to_dashboardFragment"
+            app:destination="@id/dashboardFragment"
+            app:popUpTo="@id/ProfileSelectorFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_ProfileSelectorFragment_to_CreateProfileFragment"
+            app:destination="@id/CreateProfileFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/CreateProfileFragment"
+        android:name="brettdansmith.drugdiary.ui.auth.CreateProfileFragment"
+        android:label="Create Profile"
+        tools:layout="@layout/fragment_create_profile">
+        <action
+            android:id="@+id/action_CreateProfileFragment_to_ProfileSelectorFragment"
+            app:destination="@id/ProfileSelectorFragment"
+            app:popUpTo="@id/ProfileSelectorFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/dashboardFragment"
+        android:name="brettdansmith.drugdiary.ui.dashboard.DashboardFragment"
+        android:label="Dashboard"
+        tools:layout="@layout/fragment_dashboard" />
+
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="brettdansmith.drugdiary.ui.profile.ProfileFragment"
+        android:label="Profile"
+        tools:layout="@layout/fragment_profile">
+        <action
+            android:id="@+id/action_profileFragment_to_medicationsFragment"
+            app:destination="@id/medicationsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/assistantFragment"
+        android:name="brettdansmith.drugdiary.ui.assistant.AssistantFragment"
+        android:label="AI Assistant"
+        tools:layout="@layout/fragment_assistant" />
+
+    <fragment
+        android:id="@+id/medicationsFragment"
+        android:name="brettdansmith.drugdiary.ui.medications.MedicationsFragment"
+        android:label="Medications"
+        tools:layout="@layout/fragment_medications" />
+
+    <fragment
+        android:id="@+id/diaryFragment"
+        android:name="brettdansmith.drugdiary.ui.diary.DiaryFragment"
+        android:label="Diary"
+        tools:layout="@layout/fragment_diary" />
+
+    <fragment
+        android:id="@+id/resourcesFragment"
+        android:name="brettdansmith.drugdiary.ui.resources.ResourcesFragment"
+        android:label="Resources"
+        tools:layout="@layout/fragment_resources" />
+
+    <fragment
+        android:id="@+id/interactionCheckerFragment"
+        android:name="brettdansmith.drugdiary.ui.reference.InteractionCheckerFragment"
+        android:label="Interaction Checker"
+        tools:layout="@layout/fragment_interaction_checker" />
+
+    <fragment
+        android:id="@+id/doseCalculatorFragment"
+        android:name="brettdansmith.drugdiary.ui.medications.DoseCalculatorFragment"
+        android:label="Dose Calculator"
+        tools:layout="@layout/fragment_dose_calculator" />
+
+    <fragment
+        android:id="@+id/reagentChartFragment"
+        android:name="brettdansmith.drugdiary.ui.reference.ReagentChartFragment"
+        android:label="Reagent Charts"
+        tools:layout="@layout/fragment_reagent_chart" />
+
+    <fragment
+        android:id="@+id/supportResourcesFragment"
+        android:name="brettdansmith.drugdiary.ui.resources.SupportResourcesFragment"
+        android:label="Support"
+        tools:layout="@layout/fragment_support_resources" />
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="brettdansmith.drugdiary.ui.settings.SettingsFragment"
+        android:label="Settings" />
+</navigation>
+

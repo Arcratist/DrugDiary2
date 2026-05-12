@@ -1,0 +1,40 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme for Dark Mode. -->
+    <style name="Base.Theme.DrugDiary" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Main Palette -->
+        <item name="colorPrimary">@color/dark_accent_primary</item>
+        <item name="colorOnPrimary">@color/dark_bg_primary</item>
+        <item name="colorPrimaryContainer">@color/dark_selected</item>
+        <item name="colorOnPrimaryContainer">@color/dark_text_primary</item>
+        
+        <item name="colorSecondary">@color/dark_accent_secondary</item>
+        <item name="colorOnSecondary">@color/dark_bg_primary</item>
+        <item name="colorSecondaryContainer">@color/dark_pressed</item>
+        <item name="colorOnSecondaryContainer">@color/dark_text_primary</item>
+
+        <item name="colorTertiary">@color/dark_accent_highlight</item>
+        <item name="colorOnTertiary">@color/dark_bg_primary</item>
+
+        <!-- Background & Surface -->
+        <item name="android:windowBackground">@color/dark_bg_primary</item>
+        <item name="colorSurface">@color/dark_surface</item>
+        <item name="colorOnSurface">@color/dark_text_primary</item>
+        <item name="colorSurfaceVariant">@color/dark_bg_secondary</item>
+        <item name="colorOnSurfaceVariant">@color/dark_text_secondary</item>
+
+        <!-- Feedback & Outline -->
+        <item name="colorError">@color/dark_error</item>
+        <item name="colorOnError">@color/dark_bg_primary</item>
+        <item name="colorOutline">@color/dark_border</item>
+        <item name="colorOutlineVariant">@color/dark_border</item>
+        
+        <!-- Status Bar & Navigation Bar -->
+        <item name="android:statusBarColor">@color/dark_bg_primary</item>
+        <item name="android:navigationBarColor">@color/dark_bg_primary</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+    </style>
+
+    <style name="TextAppearance.DrugDiary.Toolbar.Title" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textStyle">normal</item>
+    </style>
+</resources>

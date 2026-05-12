@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Premium Light Mode Palette -->
+    <color name="light_bg_primary">#F7F8FA</color>
+    <color name="light_bg_secondary">#EEF2F3</color>
+    <color name="light_surface">#FFFFFF</color>
+
+    <color name="light_text_primary">#1D232A</color>
+    <color name="light_text_secondary">#59636E</color>
+    <color name="light_text_muted">#88919B</color>
+
+    <color name="light_accent_primary">#236C6A</color>
+    <color name="light_accent_secondary">#5E6B7A</color>
+    <color name="light_accent_highlight">#B06B3B</color>
+
+    <color name="light_success">#4F8F68</color>
+    <color name="light_warning">#C89A48</color>
+    <color name="light_error">#CC6666</color>
+
+    <color name="light_border">#D8DEE6</color>
+    <color name="light_selected">#DDEBE8</color>
+    <color name="light_pressed">#D3E0DD</color>
+
+    <!-- Premium Dark Mode Palette -->
+    <color name="dark_bg_primary">#111615</color>
+    <color name="dark_bg_secondary">#17201F</color>
+    <color name="dark_surface">#1D2826</color>
+
+    <color name="dark_text_primary">#ECEFF4</color>
+    <color name="dark_text_secondary">#A7B0BA</color>
+    <color name="dark_text_muted">#7D8792</color>
+
+    <color name="dark_accent_primary">#7BC8BF</color>
+    <color name="dark_accent_secondary">#A8B2BD</color>
+    <color name="dark_accent_highlight">#E0A36F</color>
+
+    <color name="dark_success">#5FA777</color>
+    <color name="dark_warning">#D1A95A</color>
+    <color name="dark_error">#D96C6C</color>
+
+    <color name="dark_border">#2C3A37</color>
+    <color name="dark_selected">#253C38</color>
+    <color name="dark_pressed">#304A45</color>
+
+    <!-- Shared/Legacy Colors -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>
