@@ -3,8 +3,7 @@ package brettdansmith.drugdiary.data.settings;
 import androidx.appcompat.app.AppCompatDelegate;
 
 /**
- * Immutable snapshot of global app preferences. Profile vault data is intentionally
- * absent here: settings can be read before login, but encrypted profile data cannot.
+ * Immutable snapshot of global app preferences.
  */
 public final class SettingsState {
     public final int themeMode;
@@ -19,12 +18,12 @@ public final class SettingsState {
     public final boolean defaultSixDigitPin;
     public final boolean showProfileSetupGuidance;
     public final boolean assistantMemory;
-    public final boolean assistantProfileContext;
-    public final boolean assistantMedicationContext;
-    public final boolean assistantLogContext;
     public final boolean assistantResponseNotifications;
     public final AiProvider assistantProvider;
     public final int referenceCacheDays;
+    public final boolean privateMode;
+    public final boolean hideDashboardSensitive;
+    public final boolean globalPrivacyCollection;
 
     public SettingsState(
             int themeMode,
@@ -39,15 +38,15 @@ public final class SettingsState {
             boolean defaultSixDigitPin,
             boolean showProfileSetupGuidance,
             boolean assistantMemory,
-            boolean assistantProfileContext,
-            boolean assistantMedicationContext,
-            boolean assistantLogContext,
             boolean assistantResponseNotifications,
             AiProvider assistantProvider,
-            int referenceCacheDays) {
+            int referenceCacheDays,
+            boolean privateMode,
+            boolean hideDashboardSensitive,
+            boolean globalPrivacyCollection) {
         this.themeMode = themeMode;
         this.language = language == null ? LanguageOption.SYSTEM : language;
-        this.unitSystem = unitSystem == null ? UnitSystem.METRIC : unitSystem;
+        this.unitSystem = unitSystem == null ? UnitSystem.SYSTEM : unitSystem;
         this.timeFormat = timeFormat == null ? TimeFormat.TWENTY_FOUR_HOUR : timeFormat;
         this.notificationsEnabled = notificationsEnabled;
         this.stealthNotifications = stealthNotifications;
@@ -57,19 +56,19 @@ public final class SettingsState {
         this.defaultSixDigitPin = defaultSixDigitPin;
         this.showProfileSetupGuidance = showProfileSetupGuidance;
         this.assistantMemory = assistantMemory;
-        this.assistantProfileContext = assistantProfileContext;
-        this.assistantMedicationContext = assistantMedicationContext;
-        this.assistantLogContext = assistantLogContext;
         this.assistantResponseNotifications = assistantResponseNotifications;
         this.assistantProvider = assistantProvider == null ? AiProvider.OPENAI : assistantProvider;
         this.referenceCacheDays = Math.max(1, referenceCacheDays);
+        this.privateMode = privateMode;
+        this.hideDashboardSensitive = hideDashboardSensitive;
+        this.globalPrivacyCollection = globalPrivacyCollection;
     }
 
     public static SettingsState defaults() {
         return new SettingsState(
                 AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM,
                 LanguageOption.SYSTEM,
-                UnitSystem.METRIC,
+                UnitSystem.SYSTEM,
                 TimeFormat.TWENTY_FOUR_HOUR,
                 true,
                 false,
@@ -79,12 +78,11 @@ public final class SettingsState {
                 false,
                 true,
                 true,
-                false,
-                true,
-                false,
                 true,
                 AiProvider.OPENAI,
-                7);
+                7,
+                false,
+                false,
+                false);
     }
 }
-

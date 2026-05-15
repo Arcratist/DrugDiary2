@@ -2,6 +2,7 @@ package brettdansmith.drugdiary.network.ai;
 
 import android.content.Context;
 import android.util.Base64;
+import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -20,15 +21,14 @@ import java.util.Locale;
 import brettdansmith.drugdiary.data.settings.AiProvider;
 import brettdansmith.drugdiary.data.settings.ProviderSettings;
 import brettdansmith.drugdiary.data.settings.SettingsRepository;
-import brettdansmith.drugdiary.model.ai.AiDebugMetadata;
-import brettdansmith.drugdiary.model.ai.AiResolvedConfig;
+import brettdansmith.drugdiary.domain.model.ai.AiResolvedConfig;
 import brettdansmith.drugdiary.network.ai.capabilities.AiConfigResolver;
 import brettdansmith.drugdiary.ui.assistant.ChatAdapter;
 import brettdansmith.drugdiary.ui.assistant.ChatMessage;
 import brettdansmith.drugdiary.settings.AppSettings;
 
 public final class AssistantApiClient {
-    // Provider endpoints differ mostly in request/stream envelope shape.
+    private static final String TAG = "AssistantApiClient";
     public static final String OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
     public static final String DEEPSEEK_CHAT_URL = "https://api.deepseek.com/chat/completions";
     public static final String OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -58,72 +58,121 @@ public final class AssistantApiClient {
     private AssistantApiClient() {}
 
     public static void streamAssistantResponse(Context context, List<ChatMessage> messages, String profileContextText, StreamCallback callback) {
-        String providerPref = AppSettings.getAiProvider(context);
-        AiProvider provider = AiProvider.fromPreference(providerPref);
         SettingsRepository settingsRepository = new SettingsRepository(context);
-        ProviderSettings providerSettings = settingsRepository.getProviderSettings(provider);
-        if (!providerSettings.enabled) {
-            callback.onError("Selected provider is disabled in settings.");
+        AiProvider primaryProvider = AiProvider.fromPreference(AppSettings.getAiProvider(context));
+
+        List<AiProvider> providersToTry = new ArrayList<>();
+        providersToTry.add(primaryProvider);
+
+        if (settingsRepository.isAiFallbackEnabled()) {
+            String fallbackOrder = settingsRepository.getAiFallbackOrder();
+            if (!fallbackOrder.trim().isEmpty()) {
+                for (String p : fallbackOrder.split(",")) {
+                    AiProvider provider = AiProvider.fromPreference(p.trim());
+                    if (provider != primaryProvider && !providersToTry.contains(provider)) {
+                        providersToTry.add(provider);
+                    }
+                }
+            }
+            // Add other core providers as ultimate fallback if not already in list
+            AiProvider[] core = {AiProvider.OPENAI, AiProvider.GEMINI, AiProvider.ANTHROPIC};
+            for (AiProvider p : core) {
+                if (!providersToTry.contains(p)) {
+                    providersToTry.add(p);
+                }
+            }
+        }
+
+        tryNextProvider(context, messages, profileContextText, providersToTry, 0, callback);
+    }
+
+    private static void tryNextProvider(Context context, List<ChatMessage> messages, String profileContextText, List<AiProvider> providers, int index, StreamCallback callback) {
+        if (index >= providers.size()) {
+            callback.onError("All configured AI providers failed to respond.");
             return;
         }
 
-        AiResolvedConfig resolved = AiConfigResolver.resolve(
-                provider,
-                providerSettings,
-                settingsRepository.isAiWebSearchEnabled(),
-                settingsRepository.isAiCitationsRequired());
-        try {
-            if (provider == AiProvider.ANTHROPIC) {
-                new AnthropicProviderClient().stream(context, messages, profileContextText, callback);
-            } else if (provider == AiProvider.GEMINI) {
-                new GeminiProviderClient().stream(context, messages, profileContextText, callback);
-            } else if (provider == AiProvider.DEEPSEEK) {
-                new OpenAiCompatibleProviderClient(
-                    resolved.apiKey,
-                    resolved.model,
-                    resolved.endpointUrl, "DeepSeek",
-                    AttachmentMode.PORTABLE_TEXT_ONLY
-                ).stream(context, messages, profileContextText, callback);
-            } else if (provider == AiProvider.XAI) {
-                new OpenAiCompatibleProviderClient(
-                        resolved.apiKey,
-                        resolved.model,
-                        resolved.endpointUrl, "xAI",
-                        openAiCompatibleAttachmentMode("xAI", resolved.model)
-                ).stream(context, messages, profileContextText, callback);
-            } else if (provider == AiProvider.GROQ) {
-                new OpenAiCompatibleProviderClient(
-                        resolved.apiKey,
-                        resolved.model,
-                        resolved.endpointUrl, "Groq",
-                        openAiCompatibleAttachmentMode("Groq", resolved.model)
-                ).stream(context, messages, profileContextText, callback);
-            } else if (provider == AiProvider.MISTRAL) {
-                new OpenAiCompatibleProviderClient(
-                        resolved.apiKey,
-                        resolved.model,
-                        resolved.endpointUrl, "Mistral",
-                        openAiCompatibleAttachmentMode("Mistral", resolved.model)
-                ).stream(context, messages, profileContextText, callback);
-            } else if (provider == AiProvider.PERPLEXITY) {
-                new OpenAiCompatibleProviderClient(
-                        resolved.apiKey,
-                        resolved.model,
-                        resolved.endpointUrl, "Perplexity",
-                        openAiCompatibleAttachmentMode("Perplexity", resolved.model)
-                ).stream(context, messages, profileContextText, callback);
-            } else if (provider == AiProvider.OPENROUTER) {
-                new OpenAiCompatibleProviderClient(
-                    resolved.apiKey,
-                    resolved.model,
-                    resolved.endpointUrl, "OpenRouter",
-                    openAiCompatibleAttachmentMode("OpenRouter", resolved.model)
-                ).stream(context, messages, profileContextText, callback);
-            } else {
-                new OpenAiProviderClient().stream(context, messages, profileContextText, callback);
+        AiProvider provider = providers.get(index);
+        SettingsRepository settingsRepository = new SettingsRepository(context);
+        ProviderSettings providerSettings = settingsRepository.getProviderSettings(provider);
+
+        if (!providerSettings.enabled || providerSettings.apiKey.isEmpty()) {
+            // Skip disabled or unconfigured providers in the fallback chain
+            tryNextProvider(context, messages, profileContextText, providers, index + 1, callback);
+            return;
+        }
+
+        AiProviderClient client = createProviderClient(provider, providerSettings, settingsRepository);
+        int maxRetries = providerSettings.maxRetries;
+        int timeout = providerSettings.timeoutSeconds;
+
+        attemptWithRetry(context, client, messages, profileContextText, maxRetries, 0, timeout, new StreamCallback() {
+            @Override
+            public void onChunk(String text) {
+                callback.onChunk(text);
             }
+
+            @Override
+            public void onDone() {
+                callback.onDone();
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.w(TAG, "Provider " + provider.displayName() + " failed: " + error);
+                // On error, try the next provider in the list
+                tryNextProvider(context, messages, profileContextText, providers, index + 1, callback);
+            }
+        });
+    }
+
+    private static void attemptWithRetry(Context context, AiProviderClient client, List<ChatMessage> messages, String profileContextText, int maxRetries, int currentRetry, int timeout, StreamCallback callback) {
+        try {
+            client.stream(context, messages, profileContextText, new StreamCallback() {
+                @Override
+                public void onChunk(String text) {
+                    callback.onChunk(text);
+                }
+
+                @Override
+                public void onDone() {
+                    callback.onDone();
+                }
+
+                @Override
+                public void onError(String error) {
+                    if (currentRetry < maxRetries) {
+                        Log.i(TAG, "Retrying provider... (" + (currentRetry + 1) + "/" + maxRetries + ")");
+                        attemptWithRetry(context, client, messages, profileContextText, maxRetries, currentRetry + 1, timeout, callback);
+                    } else {
+                        callback.onError(error);
+                    }
+                }
+            }, timeout);
         } catch (Exception e) {
-            callback.onError(AiDebugMetadata.sanitizeError(e.getMessage()));
+            if (currentRetry < maxRetries) {
+                attemptWithRetry(context, client, messages, profileContextText, maxRetries, currentRetry + 1, timeout, callback);
+            } else {
+                callback.onError(e.getMessage());
+            }
+        }
+    }
+
+    private static AiProviderClient createProviderClient(AiProvider provider, ProviderSettings settings, SettingsRepository repo) {
+        AiResolvedConfig resolved = AiConfigResolver.resolve(provider, settings, repo.isAiWebSearchEnabled(), repo.isAiCitationsRequired());
+        
+        switch (provider) {
+            case ANTHROPIC: return new AnthropicProviderClient();
+            case GEMINI: return new GeminiProviderClient();
+            case DEEPSEEK: return new OpenAiCompatibleProviderClient(resolved.apiKey, resolved.model, resolved.endpointUrl, "DeepSeek", AttachmentMode.PORTABLE_TEXT_ONLY);
+            case XAI: return new OpenAiCompatibleProviderClient(resolved.apiKey, resolved.model, resolved.endpointUrl, "xAI", openAiCompatibleAttachmentMode("xAI", resolved.model));
+            case GROQ: return new OpenAiCompatibleProviderClient(resolved.apiKey, resolved.model, resolved.endpointUrl, "Groq", openAiCompatibleAttachmentMode("Groq", resolved.model));
+            case MISTRAL: return new OpenAiCompatibleProviderClient(resolved.apiKey, resolved.model, resolved.endpointUrl, "Mistral", openAiCompatibleAttachmentMode("Mistral", resolved.model));
+            case PERPLEXITY: return new OpenAiCompatibleProviderClient(resolved.apiKey, resolved.model, resolved.endpointUrl, "Perplexity", openAiCompatibleAttachmentMode("Perplexity", resolved.model));
+            case OPENROUTER: return new OpenAiCompatibleProviderClient(resolved.apiKey, resolved.model, resolved.endpointUrl, "OpenRouter", openAiCompatibleAttachmentMode("OpenRouter", resolved.model));
+            case OPENAI: 
+            default:
+                return new OpenAiProviderClient();
         }
     }
 
@@ -131,7 +180,7 @@ public final class AssistantApiClient {
             Context context,
             List<ChatMessage> messages, String profileContextText,
             StreamCallback callback, String apiKey, String model, String endpointUrl, String providerName,
-            AttachmentMode attachmentMode) throws Exception {
+            AttachmentMode attachmentMode, int timeoutSeconds) throws Exception {
             
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IllegalStateException(providerName + " API key is not configured.");
@@ -178,10 +227,10 @@ public final class AssistantApiClient {
                     }
                 } catch (Exception ignored) {}
             }
-        }, callback);
+        }, callback, timeoutSeconds);
     }
 
-    public static void streamAnthropicResponse(Context context, List<ChatMessage> messages, String profileContextText, StreamCallback callback) throws Exception {
+    public static void streamAnthropicResponse(Context context, List<ChatMessage> messages, String profileContextText, StreamCallback callback, int timeoutSeconds) throws Exception {
         String apiKey = AppSettings.getAnthropicApiKey(context);
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IllegalStateException("Claude API key is not configured.");
@@ -212,10 +261,10 @@ public final class AssistantApiClient {
                     }
                 } catch (Exception ignored) {}
             }
-        }, callback);
+        }, callback, timeoutSeconds);
     }
 
-    public static void streamGeminiResponse(Context context, List<ChatMessage> messages, String profileContextText, StreamCallback callback) throws Exception {
+    public static void streamGeminiResponse(Context context, List<ChatMessage> messages, String profileContextText, StreamCallback callback, int timeoutSeconds) throws Exception {
         String apiKey = AppSettings.getGeminiApiKey(context);
         if (apiKey == null || apiKey.trim().isEmpty()) {
             throw new IllegalStateException("Gemini API key is not configured.");
@@ -240,7 +289,6 @@ public final class AssistantApiClient {
         }, "Gemini", line -> {
             if (line.startsWith("data: ")) {
                 try {
-                    // Remove "data: " prefix
                     String payload = line.substring(6).trim();
                     if (payload.isEmpty()) return;
                     JSONObject json = new JSONObject(payload);
@@ -256,12 +304,10 @@ public final class AssistantApiClient {
                     }
                 } catch (Exception ignored) {}
             }
-        }, callback);
+        }, callback, timeoutSeconds);
     }
 
     private static String buildInstructions(String profileContextText, String provider) {
-        // The developer context is a private command contract. /context exposes only the user-approved
-        // profile context and must never echo this private section back to the user.
         return brettdansmith.drugdiary.assistant.AssistantConfig.systemPrompt(provider)
                 + "\n\n"
                 + brettdansmith.drugdiary.assistant.AssistantConfig.developerPrompt()
@@ -492,11 +538,12 @@ public final class AssistantApiClient {
         void process(String line);
     }
 
-    private static void postStream(String url, JSONObject body, RequestHeaders headers, String label, LineProcessor processor, StreamCallback callback) throws Exception {
+    private static void postStream(String url, JSONObject body, RequestHeaders headers, String label, LineProcessor processor, StreamCallback callback, int timeoutSeconds) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setRequestMethod("POST");
-        connection.setConnectTimeout(20_000);
-        connection.setReadTimeout(60_000);
+        int timeoutMs = Math.max(5000, timeoutSeconds * 1000);
+        connection.setConnectTimeout(timeoutMs);
+        connection.setReadTimeout(timeoutMs + 20000);
         connection.setDoOutput(true);
         connection.setRequestProperty("Content-Type", "application/json");
         connection.setRequestProperty("Accept", "text/event-stream");
@@ -515,7 +562,6 @@ public final class AssistantApiClient {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
             int charRead;
             StringBuilder lineBuilder = new StringBuilder();
-            // We use char-by-char read because depending on the AI endpoint, chunk borders may differ
             while ((charRead = reader.read()) != -1) {
                 char c = (char) charRead;
                 lineBuilder.append(c);
@@ -552,5 +598,3 @@ public final class AssistantApiClient {
         void apply(HttpURLConnection connection);
     }
 }
-
-

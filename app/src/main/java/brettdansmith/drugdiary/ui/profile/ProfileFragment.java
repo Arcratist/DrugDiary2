@@ -1,11 +1,7 @@
 package brettdansmith.drugdiary.ui.profile;
 
-import brettdansmith.drugdiary.R;
-import brettdansmith.drugdiary.ui.auth.ProfileSelectorFragment;
-
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -15,57 +11,48 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import brettdansmith.drugdiary.MainActivity;
+import brettdansmith.drugdiary.R;
 import brettdansmith.drugdiary.data.profile.EncryptedDrugCacheStore;
 import brettdansmith.drugdiary.data.profile.EncryptedProfileStore;
 import brettdansmith.drugdiary.data.profile.ProfileJson;
+import brettdansmith.drugdiary.data.profile.ProfileAvatar;
+import brettdansmith.drugdiary.data.profile.ProfileAvatarDataStore;
 import brettdansmith.drugdiary.databinding.FragmentProfileBinding;
 import brettdansmith.drugdiary.domain.profile.ProfileValidator;
 import brettdansmith.drugdiary.domain.units.UnitPreferences;
 import brettdansmith.drugdiary.domain.validation.ProfileValidationResult;
 import brettdansmith.drugdiary.settings.AppSettings;
+import brettdansmith.drugdiary.ui.auth.ProfileSelectorFragment;
+import brettdansmith.drugdiary.ui.avatar.AvatarEditorBottomSheet;
 import brettdansmith.drugdiary.util.JsonUtils;
-import brettdansmith.drugdiary.util.SecureQrShareController;
-import brettdansmith.drugdiary.util.SecureQrShareController.ShareMode;
 import brettdansmith.drugdiary.util.UnitConverter;
+import brettdansmith.drugdiary.ui.profile.LocationAutoCompleteAdapter;
 
 public class ProfileFragment extends Fragment {
+    private static final String AVATAR_EDITOR_REQUEST = "profile_avatar_editor";
+
     private FragmentProfileBinding binding;
     private boolean useMetricUnits = true;
     private UnitPreferences unitPreferences;
     private String profileName = "";
-    private ActivityResultLauncher<String> avatarPicker;
-    private SecureQrShareController qrShareController;
-    private final ExecutorService diskExecutor = Executors.newSingleThreadExecutor();
+    private ProfileAvatar currentAvatar = ProfileAvatar.initials();
+    private static final ExecutorService diskExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private boolean isDataLoaded = false;
 
     private static final String[] SEX_OPTIONS = {"Male", "Female", "Other", "Prefer not to say"};
-    private static final String[] BLOOD_OPTIONS = {"A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"};
-
-    public ProfileFragment() {
-        avatarPicker = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
-            if (uri == null || binding == null || profileName.isEmpty()) return;
-            try {
-                requireContext().getContentResolver().takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            } catch (SecurityException ignored) {
-                // Some content providers grant transient read access only.
-            }
-            saveAvatarUri(uri);
-        });
-    }
+    private static final String[] BLOOD_OPTIONS = {"Unknown", "O+", "A+", "B+", "O-", "A-", "AB+", "B-", "AB-"};
 
     @Nullable
     @Override
@@ -79,141 +66,80 @@ public class ProfileFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         useMetricUnits = AppSettings.useMetric(requireContext());
         unitPreferences = UnitPreferences.from(requireContext());
-        qrShareController = new SecureQrShareController(this);
         binding.layoutWeight.setHint(getString(R.string.weight_hint_format, unitPreferences.weightLabel()));
         binding.layoutHeight.setHint(getString(R.string.height_hint_format, unitPreferences.heightLabel()));
         setupDropdowns();
+        setupAvatarEditor();
+
+        binding.editLocation.setAdapter(new LocationAutoCompleteAdapter(requireContext()));
+
         loadProfileDataAsync();
 
-        binding.imageProfileLarge.setOnClickListener(v -> showAvatarEditor());
-        binding.btnMedications.setOnClickListener(v -> 
-            NavHostFragment.findNavController(this).navigate(R.id.action_profileFragment_to_medicationsFragment));
-        binding.btnShareProfileQr.setOnClickListener(v -> showShareDataTypeDialog());
+        binding.buttonEditAvatar.setOnClickListener(v -> openAvatarEditor());
+        binding.btnMedications.setOnClickListener(v ->
+                NavHostFragment.findNavController(this).navigate(R.id.action_profileFragment_to_medicationsFragment));
+
+        binding.btnProfileSettings.setOnClickListener(v ->
+                NavHostFragment.findNavController(this).navigate(R.id.action_profileFragment_to_userSpecificSettingsFragment));
+        binding.btnLogout.setOnClickListener(v -> {
+            if (getActivity() instanceof MainActivity) {
+                ((MainActivity) getActivity()).logout();
+            }
+        });
     }
 
-    private void showShareDataTypeDialog() {
-        String[] options = {
-                getString(R.string.share_type_whole_profile),
-                getString(R.string.share_type_profile_details),
-                getString(R.string.share_type_medications),
-                getString(R.string.share_type_diary),
-                getString(R.string.share_type_assistant),
-                getString(R.string.share_type_reference_cache)
-        };
-        new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.share_data_type_title)
-                .setItems(options, (dialog, which) -> showShareMethodDialog(which))
-                .show();
+    private void setupAvatarEditor() {
+        getParentFragmentManager().setFragmentResultListener(
+                AVATAR_EDITOR_REQUEST,
+                getViewLifecycleOwner(),
+                (key, bundle) -> {
+                    ProfileAvatar newAvatar = ProfileAvatar.fromPrefs(
+                            brettdansmith.drugdiary.data.profile.AvatarType.fromStorage(
+                                    bundle.getString(AvatarEditorBottomSheet.RESULT_TYPE,
+                                            brettdansmith.drugdiary.data.profile.AvatarType.INITIALS.name())),
+                            bundle.getString(AvatarEditorBottomSheet.RESULT_ICON_ID, ""),
+                            bundle.getString(AvatarEditorBottomSheet.RESULT_IMAGE_PATH, ""));
+                    saveAvatarAsync(newAvatar);
+                });
     }
 
-    private void showShareMethodDialog(int exportType) {
-        String[] methods = {
-                getString(R.string.share_method_qr),
-                getString(R.string.share_method_encrypted_text)
-        };
-        new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.share_method_title)
-                .setItems(methods, (dialog, which) -> shareSelectedData(exportType, which == 0 ? ShareMode.QR_CODE : ShareMode.ENCRYPTED_TEXT))
-                .show();
+    private void openAvatarEditor() {
+        AvatarEditorBottomSheet.show(getParentFragmentManager(), AVATAR_EDITOR_REQUEST, profileName, currentAvatar);
     }
 
-    private void shareSelectedData(int exportType, ShareMode mode) {
-        try {
-            saveProfileData();
-            JSONObject data = EncryptedProfileStore.loadProfileData(requireContext());
-            if (data == null) return;
-            ExportSelection selection = buildExportSelection(data, exportType);
-            qrShareController.shareJson(selection.type, selection.title, selection.payload, mode);
-        } catch (Exception e) {
-            Toast.makeText(requireContext(), getString(R.string.secure_qr_export_failed, e.getMessage()), Toast.LENGTH_LONG).show();
+    private void saveAvatarAsync(@NonNull ProfileAvatar avatar) {
+        currentAvatar = avatar;
+        binding.imageProfileLarge.bind(profileName, currentAvatar);
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).refreshProfileNavIconNow(profileName, currentAvatar);
         }
+        Context appContext = requireContext().getApplicationContext();
+        String name = profileName;
+        diskExecutor.execute(() -> {
+            try {
+                JSONObject data = EncryptedProfileStore.loadProfileData(appContext);
+                ProfileAvatarDataStore.writeToData(data, avatar);
+                EncryptedProfileStore.saveProfileData(appContext, data);
+                ProfileAvatarDataStore.writeToPrefs(appContext, name, avatar);
+            } catch (Exception e) {
+                mainHandler.post(() -> Toast.makeText(requireContext(), R.string.avatar_save_failed, Toast.LENGTH_SHORT).show());
+            }
+        });
     }
 
-    private ExportSelection buildExportSelection(JSONObject data, int exportType) throws Exception {
-        switch (exportType) {
-            case 1:
-                return new ExportSelection(
-                        "profile_details",
-                        getString(R.string.drugdiary_profile_details_export),
-                        new JSONObject()
-                                .put(ProfileJson.KEY_PROFILE, copyObject(data.optJSONObject(ProfileJson.KEY_PROFILE)))
-                                .put(ProfileJson.KEY_MEDICAL, copyObject(data.optJSONObject(ProfileJson.KEY_MEDICAL)))
-                                .put(ProfileJson.KEY_PRIVACY, copyObject(data.optJSONObject(ProfileJson.KEY_PRIVACY))));
-            case 2:
-                return new ExportSelection(
-                        "medications",
-                        getString(R.string.drugdiary_medications_export),
-                        new JSONObject()
-                                .put("schema", ProfileJson.KEY_MEDICATIONS)
-                                .put("items", copyArray(trackers(data).optJSONArray(ProfileJson.KEY_MEDICATIONS))));
-            case 3:
-                return new ExportSelection(
-                        "diary_logs",
-                        getString(R.string.drugdiary_diary_export),
-                        new JSONObject()
-                                .put("schema", ProfileJson.KEY_LOGS)
-                                .put("items", copyArray(trackers(data).optJSONArray(ProfileJson.KEY_LOGS))));
-            case 4:
-                return new ExportSelection(
-                        "assistant_chats",
-                        getString(R.string.drugdiary_assistant_export),
-                        new JSONObject()
-                                .put(ProfileJson.KEY_ASSISTANT_CHATS, copyArray(data.optJSONArray(ProfileJson.KEY_ASSISTANT_CHATS)))
-                                .put(ProfileJson.KEY_ASSISTANT_ACTIVE_CHAT_ID, data.optString(ProfileJson.KEY_ASSISTANT_ACTIVE_CHAT_ID, "")));
-            case 5:
-                JSONObject drugData = EncryptedDrugCacheStore.loadDrugCache(requireContext());
-                return new ExportSelection(
-                        "reference_cache",
-                        getString(R.string.drugdiary_reference_cache_export),
-                        new JSONObject()
-                                .put(ProfileJson.KEY_DRUG_DATABASE_CACHE, copyObject(drugData.optJSONObject(ProfileJson.KEY_DRUG_DATABASE_CACHE)))
-                                .put(ProfileJson.KEY_PUBCHEM_CACHE, copyObject(drugData.optJSONObject(ProfileJson.KEY_PUBCHEM_CACHE))));
-            case 0:
-            default:
-                JSONObject combined = new JSONObject(data.toString());
-                JSONObject drugCache = EncryptedDrugCacheStore.loadDrugCache(requireContext());
-                if (drugCache.has(ProfileJson.KEY_DRUG_DATABASE_CACHE)) {
-                    combined.put(ProfileJson.KEY_DRUG_DATABASE_CACHE, drugCache.optJSONObject(ProfileJson.KEY_DRUG_DATABASE_CACHE));
-                }
-                if (drugCache.has(ProfileJson.KEY_PUBCHEM_CACHE)) {
-                    combined.put(ProfileJson.KEY_PUBCHEM_CACHE, drugCache.optJSONObject(ProfileJson.KEY_PUBCHEM_CACHE));
-                }
-                return new ExportSelection(
-                        "profile",
-                        getString(R.string.drugdiary_profile_export),
-                        combined);
-        }
-    }
 
-    private JSONObject trackers(JSONObject data) {
-        JSONObject trackers = data.optJSONObject(ProfileJson.KEY_TRACKERS);
-        return trackers == null ? new JSONObject() : trackers;
-    }
-
-    private JSONObject copyObject(JSONObject object) throws Exception {
-        return object == null ? new JSONObject() : new JSONObject(object.toString());
-    }
-
-    private JSONArray copyArray(JSONArray array) throws Exception {
-        return array == null ? new JSONArray() : new JSONArray(array.toString());
-    }
-
-    private static final class ExportSelection {
-        final String type;
-        final String title;
-        final JSONObject payload;
-
-        ExportSelection(String type, String title, JSONObject payload) {
-            this.type = type;
-            this.title = title;
-            this.payload = payload;
-        }
-    }
 
     private void setupDropdowns() {
-        binding.editGender.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, SEX_OPTIONS));
-        binding.editBloodType.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, BLOOD_OPTIONS));
+        ArrayAdapter<String> genderAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, SEX_OPTIONS);
+        binding.editGender.setAdapter(genderAdapter);
+        binding.editGender.setOnClickListener(v -> binding.editGender.showDropDown());
+
+        ArrayAdapter<String> bloodAdapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, BLOOD_OPTIONS);
+        binding.editBloodType.setAdapter(bloodAdapter);
+        binding.editBloodType.setOnClickListener(v -> binding.editBloodType.showDropDown());
     }
+
+
 
     private void loadProfileDataAsync() {
         Context appContext = requireContext().getApplicationContext();
@@ -229,13 +155,13 @@ public class ProfileFragment extends Fragment {
             if (profile == null) profile = new JSONObject();
             if (medical == null) medical = new JSONObject();
 
-            String avatarUri = prefs.getString("avatar_uri_" + profileName, "");
-            int avatarIcon = prefs.getInt("icon_" + profileName, 1);
+            ProfileAvatar avatar = ProfileAvatar.fromProfileJson(profile);
             String age = profile.optString("age", "");
             String sex = profile.optString("sex", "");
             double weightKg = profile.optDouble("weight_kg", 0);
             double heightCm = profile.optDouble("height_cm", 0);
-            String bloodType = profile.optString("blood_type", "");
+            String rawBloodType = profile.optString("blood_type", "Unknown");
+            final String bloodType = rawBloodType.isEmpty() ? "Unknown" : rawBloodType;
             String location = profile.optString(ProfileJson.PROFILE_LOCATION, "");
             String bio = profile.optString("bio", "");
             String allergies = medical.optString("allergies", "");
@@ -244,28 +170,25 @@ public class ProfileFragment extends Fragment {
 
             mainHandler.post(() -> {
                 if (binding == null) return;
-                if (!avatarUri.isEmpty()) {
-                    binding.imageProfileLarge.setImageURI(Uri.parse(avatarUri));
-                } else {
-                    binding.imageProfileLarge.setImageResource(avatarRes(avatarIcon));
-                }
+                currentAvatar = avatar;
+                binding.imageProfileLarge.bind(profileName, currentAvatar);
                 binding.editAge.setText(age);
-                binding.editGender.setText(sex);
+                binding.editGender.setText(sex, false);
                 binding.editWeight.setText(formatEditableNumber(useMetricUnits ? weightKg : UnitConverter.kilogramsToPounds(weightKg)));
                 binding.editHeight.setText(formatEditableNumber(useMetricUnits ? heightCm : UnitConverter.centimetersToInches(heightCm)));
-                binding.editBloodType.setText(bloodType);
+                binding.editBloodType.setText(bloodType, false);
                 binding.editLocation.setText(location);
                 binding.editAboutMe.setText(bio);
                 binding.editAllergies.setText(allergies);
                 binding.editConditions.setText(conditions);
-                binding.editEmergencyNote.setText(emergencyNote);
+                isDataLoaded = true;
             });
         });
     }
 
     private void saveProfileData() {
         try {
-            if (!validateFields()) {
+            if (!isDataLoaded || !validateFields()) {
                 return;
             }
             JSONObject data = EncryptedProfileStore.loadProfileData(requireContext());
@@ -283,16 +206,17 @@ public class ProfileFragment extends Fragment {
             profile.put("bio", binding.editAboutMe.getText().toString());
             medical.put("allergies", binding.editAllergies.getText().toString());
             medical.put("conditions", binding.editConditions.getText().toString());
-            medical.put("emergency_note", binding.editEmergencyNote.getText().toString());
+            ProfileAvatarDataStore.writeToData(data, currentAvatar);
 
             EncryptedProfileStore.saveProfileData(requireContext(), data);
+            ProfileAvatarDataStore.writeToPrefs(requireContext(), profileName, currentAvatar);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     private void saveProfileDataAsync() {
-        if (binding == null || !validateFields()) return;
+        if (binding == null || !isDataLoaded || !validateFields()) return;
         Context appContext = requireContext().getApplicationContext();
         String age = binding.editAge.getText().toString();
         String sex = binding.editGender.getText().toString();
@@ -303,8 +227,9 @@ public class ProfileFragment extends Fragment {
         String bio = binding.editAboutMe.getText().toString();
         String allergies = binding.editAllergies.getText().toString();
         String conditions = binding.editConditions.getText().toString();
-        String emergencyNote = binding.editEmergencyNote.getText().toString();
         boolean metric = useMetricUnits;
+        ProfileAvatar avatar = currentAvatar;
+        String name = profileName;
 
         diskExecutor.execute(() -> {
             try {
@@ -320,8 +245,9 @@ public class ProfileFragment extends Fragment {
                 profile.put("bio", bio);
                 medical.put("allergies", allergies);
                 medical.put("conditions", conditions);
-                medical.put("emergency_note", emergencyNote);
+                ProfileAvatarDataStore.writeToData(data, avatar);
                 EncryptedProfileStore.saveProfileData(appContext, data);
+                ProfileAvatarDataStore.writeToPrefs(appContext, name, avatar);
             } catch (Exception ignored) {}
         });
     }
@@ -369,41 +295,6 @@ public class ProfileFragment extends Fragment {
         return valid;
     }
 
-    private int avatarRes(int avatar) {
-        switch (avatar) {
-            case 2: return R.drawable.avatar_placeholder_2;
-            case 3: return R.drawable.avatar_placeholder_3;
-            case 4: return R.drawable.avatar_placeholder_4;
-            default: return R.drawable.avatar_placeholder_1;
-        }
-    }
-
-    private void showAvatarEditor() {
-        String[] choices = {"Use image from device", "Avatar 1", "Avatar 2", "Avatar 3", "Avatar 4"};
-        new AlertDialog.Builder(requireContext())
-                .setTitle("Edit avatar")
-                .setItems(choices, (dialog, which) -> {
-                    if (which == 0) {
-                        avatarPicker.launch("image/*");
-                    } else {
-                        saveAvatarChoice(which);
-                    }
-                })
-                .show();
-    }
-
-    private void saveAvatarChoice(int avatar) {
-        SharedPreferences prefs = requireContext().getSharedPreferences(ProfileSelectorFragment.PREFS_PROFILES, Context.MODE_PRIVATE);
-        prefs.edit().putInt("icon_" + profileName, avatar).remove("avatar_uri_" + profileName).apply();
-        binding.imageProfileLarge.setImageResource(avatarRes(avatar));
-    }
-
-    private void saveAvatarUri(Uri uri) {
-        SharedPreferences prefs = requireContext().getSharedPreferences(ProfileSelectorFragment.PREFS_PROFILES, Context.MODE_PRIVATE);
-        prefs.edit().putString("avatar_uri_" + profileName, uri.toString()).apply();
-        binding.imageProfileLarge.setImageURI(uri);
-    }
-
     private String formatEditableNumber(double value) {
         if (value <= 0) {
             return "";
@@ -424,13 +315,11 @@ public class ProfileFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         mainHandler.removeCallbacksAndMessages(null);
-        if (qrShareController != null) qrShareController.shutdown();
         binding = null;
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        diskExecutor.shutdownNow();
     }
 }

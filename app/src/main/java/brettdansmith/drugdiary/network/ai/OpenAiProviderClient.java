@@ -7,13 +7,13 @@ import java.util.List;
 import brettdansmith.drugdiary.data.settings.AiProvider;
 import brettdansmith.drugdiary.data.settings.ProviderSettings;
 import brettdansmith.drugdiary.data.settings.SettingsRepository;
-import brettdansmith.drugdiary.model.ai.AiResolvedConfig;
+import brettdansmith.drugdiary.domain.model.ai.AiResolvedConfig;
 import brettdansmith.drugdiary.network.ai.capabilities.AiConfigResolver;
 import brettdansmith.drugdiary.ui.assistant.ChatMessage;
 
 public final class OpenAiProviderClient implements AiProviderClient {
     @Override
-    public void stream(Context context, List<ChatMessage> messages, String profileContextText, AssistantApiClient.StreamCallback callback) throws Exception {
+    public void stream(Context context, List<ChatMessage> messages, String profileContextText, AssistantApiClient.StreamCallback callback, int timeoutSeconds) throws Exception {
         SettingsRepository repository = new SettingsRepository(context);
         ProviderSettings providerSettings = repository.getProviderSettings(AiProvider.OPENAI);
         AiResolvedConfig resolved = AiConfigResolver.resolve(
@@ -30,7 +30,7 @@ public final class OpenAiProviderClient implements AiProviderClient {
                 resolved.model,
                 resolved.endpointUrl,
                 "OpenAI",
-                AssistantApiClient.openAiCompatibleAttachmentMode("OpenAI", resolved.model));
+                AssistantApiClient.openAiCompatibleAttachmentMode("OpenAI", resolved.model),
+                timeoutSeconds);
     }
 }
-

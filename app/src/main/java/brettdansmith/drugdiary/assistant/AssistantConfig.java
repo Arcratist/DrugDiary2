@@ -5,7 +5,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public final class AssistantConfig {
-    public static final String MODEL = "gpt-4.1-mini";
+    public static final String MODEL = "gpt-4o-mini";
 
     private AssistantConfig() {}
 

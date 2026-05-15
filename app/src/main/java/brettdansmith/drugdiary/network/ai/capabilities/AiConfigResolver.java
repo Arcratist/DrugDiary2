@@ -2,9 +2,9 @@ package brettdansmith.drugdiary.network.ai.capabilities;
 
 import brettdansmith.drugdiary.data.settings.AiProvider;
 import brettdansmith.drugdiary.data.settings.ProviderSettings;
-import brettdansmith.drugdiary.model.ai.AiRequestOptions;
-import brettdansmith.drugdiary.model.ai.AiResolvedConfig;
-import brettdansmith.drugdiary.model.ai.ProviderCapabilities;
+import brettdansmith.drugdiary.domain.model.ai.AiRequestOptions;
+import brettdansmith.drugdiary.domain.model.ai.AiResolvedConfig;
+import brettdansmith.drugdiary.domain.model.ai.ProviderCapabilities;
 import brettdansmith.drugdiary.network.ai.AssistantApiClient;
 
 public final class AiConfigResolver {
@@ -42,4 +42,3 @@ public final class AiConfigResolver {
         }
     }
 }
-

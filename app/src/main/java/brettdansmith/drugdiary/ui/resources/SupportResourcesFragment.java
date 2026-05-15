@@ -139,13 +139,46 @@ public class SupportResourcesFragment extends Fragment {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        bodyParams.setMargins(0, dp(6), 0, actions.length == 0 ? 0 : dp(10));
+        bodyParams.setMargins(0, dp(6), 0, actions.length == 0 ? dp(8) : dp(10));
         bodyView.setLayoutParams(bodyParams);
         content.addView(bodyView);
 
         for (SupportAction action : actions) {
             content.addView(createActionButton(action));
         }
+
+        // Add a horizontal layout for the "Ask AI" button at the bottom right
+        LinearLayout bottomBar = new LinearLayout(requireContext());
+        bottomBar.setOrientation(LinearLayout.HORIZONTAL);
+        bottomBar.setGravity(Gravity.END);
+        LinearLayout.LayoutParams bottomParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        bottomParams.setMargins(0, actions.length > 0 ? dp(6) : 0, 0, 0);
+        bottomBar.setLayoutParams(bottomParams);
+
+        MaterialButton askAiButton = new MaterialButton(
+                requireContext(),
+                null,
+                com.google.android.material.R.attr.materialButtonStyle
+        );
+        askAiButton.setAllCaps(false);
+        askAiButton.setText("Ask AI");
+        askAiButton.setTextSize(12);
+        LinearLayout.LayoutParams askAiParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                dp(36)
+        );
+        askAiButton.setLayoutParams(askAiParams);
+        askAiButton.setOnClickListener(v -> {
+            // Create a message to send to AI about this topic
+            String contextMessage = "I need information about: " + title + ". " + body;
+            navigate(R.id.assistantFragment);
+        });
+
+        bottomBar.addView(askAiButton);
+        content.addView(bottomBar);
 
         card.addView(content);
         binding.layoutSupportContainer.addView(card);

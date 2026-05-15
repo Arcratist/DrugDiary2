@@ -26,17 +26,33 @@
                 android:text="@string/create_profile"
                 android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium" />
 
-            <com.google.android.material.imageview.ShapeableImageView
-                android:id="@+id/image_profile_icon_preview"
-                android:layout_width="96dp"
-                android:layout_height="96dp"
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
-                android:layout_marginTop="20dp"
-                android:contentDescription="@string/avatar"
-                android:src="@drawable/avatar_placeholder_1"
-                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
-                app:strokeColor="?attr/colorOutline"
-                app:strokeWidth="1dp" />
+                android:layout_marginTop="20dp">
+
+                <brettdansmith.drugdiary.ui.avatar.ProfileAvatarView
+                    android:id="@+id/image_profile_icon_preview"
+                    android:layout_width="96dp"
+                    android:layout_height="96dp"
+                    android:contentDescription="@string/avatar" />
+
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/button_edit_avatar"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="-4dp"
+                    android:layout_marginBottom="-4dp"
+                    android:contentDescription="@string/edit_avatar"
+                    android:src="@drawable/ic_edit_pencil"
+                    app:backgroundTint="?attr/colorPrimary"
+                    app:elevation="2dp"
+                    app:fabCustomSize="34dp"
+                    app:rippleColor="?attr/colorOnPrimary"
+                    app:tint="?attr/colorOnPrimary" />
+            </FrameLayout>
 
             <!-- Section 1: Account Details -->
             <TextView
@@ -60,7 +76,8 @@
                     android:id="@+id/edit_profile_name"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textCapWords" />
+                    android:inputType="textCapWords"
+                    android:autofillHints="name" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -121,7 +138,7 @@
                     android:layout_marginStart="8dp"
                     android:hint="@string/sex">
 
-                    <AutoCompleteTextView
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
                         android:id="@+id/spinner_sex"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -170,17 +187,20 @@
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/layout_location"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:hint="@string/location">
+                android:layout_marginTop="12dp"
+                android:hint="@string/location"
+                app:endIconMode="none">
 
-                <com.google.android.material.textfield.TextInputEditText
+                <com.google.android.material.textfield.MaterialAutoCompleteTextView
                     android:id="@+id/edit_location"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textCapWords" />
+                    android:inputType="textCapWords"
+                    android:completionThreshold="3"
+                    android:autofillHints="postalAddress" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -216,6 +236,3 @@
         app:iconTint="?attr/colorOnPrimary" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
-
-
-

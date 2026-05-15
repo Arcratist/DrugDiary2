@@ -1,10 +1,13 @@
 package brettdansmith.drugdiary.data.settings;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.os.LocaleListCompat;
+
+import java.io.File;
 
 /**
  * Single access point for global, non-vault settings.
@@ -28,9 +31,6 @@ public final class SettingsRepository {
     public static final String PREF_DEFAULT_SIX_DIGIT_PIN = "default_six_digit_pin";
     public static final String PREF_SHOW_PROFILE_SETUP_GUIDANCE = "show_profile_setup_guidance";
     public static final String PREF_AI_MEMORY = "ai_memory";
-    public static final String PREF_AI_PROFILE_CONTEXT = "ai_profile_context";
-    public static final String PREF_AI_MEDICATION_CONTEXT = "ai_medication_context";
-    public static final String PREF_AI_LOG_CONTEXT = "ai_log_context";
     public static final String PREF_AI_RESPONSE_NOTIFICATIONS = "ai_response_notifications";
     public static final String PREF_AI_PROVIDER = "ai_provider";
     public static final String PREF_REFERENCE_CACHE_DAYS = "reference_cache_days";
@@ -40,6 +40,9 @@ public final class SettingsRepository {
     public static final String PREF_AI_FALLBACK_ORDER = "ai_fallback_order";
     public static final String PREF_PRIVATE_MODE = "private_mode";
     public static final String PREF_HIDE_DASHBOARD_SENSITIVE = "hide_dashboard_sensitive";
+    
+    // New Global fields
+    public static final String PREF_GLOBAL_PRIVACY_COLLECTION = "global_privacy_collection";
 
     private static final String KEY_API_SUFFIX = "_api_key";
     private static final String KEY_MODEL_SUFFIX = "_model";
@@ -80,24 +83,22 @@ public final class SettingsRepository {
                 prefs.getBoolean(PREF_DEFAULT_SIX_DIGIT_PIN, defaults.defaultSixDigitPin),
                 prefs.getBoolean(PREF_SHOW_PROFILE_SETUP_GUIDANCE, defaults.showProfileSetupGuidance),
                 prefs.getBoolean(PREF_AI_MEMORY, defaults.assistantMemory),
-                prefs.getBoolean(PREF_AI_PROFILE_CONTEXT, defaults.assistantProfileContext),
-                prefs.getBoolean(PREF_AI_MEDICATION_CONTEXT, defaults.assistantMedicationContext),
-                prefs.getBoolean(PREF_AI_LOG_CONTEXT, defaults.assistantLogContext),
                 prefs.getBoolean(PREF_AI_RESPONSE_NOTIFICATIONS, defaults.assistantResponseNotifications),
                 AiProvider.fromPreference(prefs.getString(PREF_AI_PROVIDER, defaults.assistantProvider.preferenceValue())),
-                prefs.getInt(PREF_REFERENCE_CACHE_DAYS, defaults.referenceCacheDays));
+                prefs.getInt(PREF_REFERENCE_CACHE_DAYS, defaults.referenceCacheDays),
+                prefs.getBoolean(PREF_PRIVATE_MODE, defaults.privateMode),
+                prefs.getBoolean(PREF_HIDE_DASHBOARD_SENSITIVE, defaults.hideDashboardSensitive),
+                prefs.getBoolean(PREF_GLOBAL_PRIVACY_COLLECTION, defaults.globalPrivacyCollection));
     }
 
     public void setThemeMode(int themeMode) {
         prefs.edit().putInt(PREF_THEME, themeMode).apply();
-        // Theme changes are applied immediately; active fragments are recreated by AppCompat as needed.
         AppCompatDelegate.setDefaultNightMode(themeMode);
     }
 
     public void setLanguage(LanguageOption language) {
         LanguageOption value = language == null ? LanguageOption.SYSTEM : language;
         prefs.edit().putString(PREF_LANGUAGE, value.languageTag()).apply();
-        // AppCompatDelegate applies locales process-wide for all recreated activities/fragments.
         AppCompatDelegate.setApplicationLocales(value == LanguageOption.SYSTEM
                 ? LocaleListCompat.getEmptyLocaleList()
                 : LocaleListCompat.forLanguageTags(value.languageTag()));
@@ -145,18 +146,6 @@ public final class SettingsRepository {
 
     public void setAssistantMemory(boolean enabled) {
         prefs.edit().putBoolean(PREF_AI_MEMORY, enabled).apply();
-    }
-
-    public void setAssistantProfileContext(boolean enabled) {
-        prefs.edit().putBoolean(PREF_AI_PROFILE_CONTEXT, enabled).apply();
-    }
-
-    public void setAssistantMedicationContext(boolean enabled) {
-        prefs.edit().putBoolean(PREF_AI_MEDICATION_CONTEXT, enabled).apply();
-    }
-
-    public void setAssistantLogContext(boolean enabled) {
-        prefs.edit().putBoolean(PREF_AI_LOG_CONTEXT, enabled).apply();
     }
 
     public void setAssistantResponseNotifications(boolean enabled) {
@@ -275,6 +264,34 @@ public final class SettingsRepository {
         prefs.edit().putInt(PREF_REFERENCE_CACHE_DAYS, Math.max(1, days)).apply();
     }
 
+    public boolean isGlobalPrivacyCollectionEnabled() {
+        return prefs.getBoolean(PREF_GLOBAL_PRIVACY_COLLECTION, true);
+    }
+
+    public void setGlobalPrivacyCollectionEnabled(boolean enabled) {
+        prefs.edit().putBoolean(PREF_GLOBAL_PRIVACY_COLLECTION, enabled).apply();
+    }
+
+    public void resetAllAppData(Context context) {
+        ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        if (am != null) {
+            boolean success = am.clearApplicationUserData();
+            if (success) {
+                return; // App will be killed, no further action needed
+            }
+        }
+        
+        // Fallback if clearApplicationUserData fails or returns false
+        prefs.edit().clear().apply();
+        context.getSharedPreferences("DrugDiaryProfiles", Context.MODE_PRIVATE).edit().clear().apply();
+        File[] files = context.getFilesDir().listFiles();
+        if (files != null) {
+            for (File file : files) {
+                file.delete();
+            }
+        }
+    }
+
     public static String providerPrefix(AiProvider provider) {
         return provider.preferenceValue();
     }
@@ -294,18 +311,6 @@ public final class SettingsRepository {
             changed = true;
         }
 
-        if (!prefs.contains(PREF_AI_PROFILE_CONTEXT)) {
-            editor.putBoolean(PREF_AI_PROFILE_CONTEXT, false);
-            changed = true;
-        }
-        if (!prefs.contains(PREF_AI_LOG_CONTEXT)) {
-            editor.putBoolean(PREF_AI_LOG_CONTEXT, false);
-            changed = true;
-        }
-        if (!prefs.contains(PREF_AI_MEDICATION_CONTEXT)) {
-            editor.putBoolean(PREF_AI_MEDICATION_CONTEXT, SettingsState.defaults().assistantMedicationContext);
-            changed = true;
-        }
         if (!prefs.contains(PREF_AI_RESPONSE_NOTIFICATIONS)) {
             editor.putBoolean(PREF_AI_RESPONSE_NOTIFICATIONS, SettingsState.defaults().assistantResponseNotifications);
             changed = true;

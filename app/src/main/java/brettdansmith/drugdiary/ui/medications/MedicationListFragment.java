@@ -17,8 +17,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import brettdansmith.drugdiary.R;
 import brettdansmith.drugdiary.data.medication.MedicationRepository;
 import brettdansmith.drugdiary.databinding.FragmentMedicationListBinding;
-import brettdansmith.drugdiary.model.medication.MedicationDoseLog;
-import brettdansmith.drugdiary.model.medication.MedicationRecord;
+import brettdansmith.drugdiary.domain.model.medication.MedicationDoseLog;
+import brettdansmith.drugdiary.domain.model.medication.MedicationRecord;
 import brettdansmith.drugdiary.ui.assistant.AssistantViewModel;
 
 public class MedicationListFragment extends Fragment {
@@ -160,4 +160,3 @@ public class MedicationListFragment extends Fragment {
         binding = null;
     }
 }
-

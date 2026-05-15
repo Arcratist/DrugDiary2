@@ -8,16 +8,19 @@
     <fragment
         android:id="@+id/ProfileSelectorFragment"
         android:name="brettdansmith.drugdiary.ui.auth.ProfileSelectorFragment"
-        android:label=""
+        android:label="Drug Diary"
         tools:layout="@layout/fragment_profile_selector">
         <action
-            android:id="@+id/action_ProfileSelectorFragment_to_dashboardFragment"
-            app:destination="@id/dashboardFragment"
+            android:id="@+id/action_ProfileSelectorFragment_to_profileFragment"
+            app:destination="@id/profileFragment"
             app:popUpTo="@id/ProfileSelectorFragment"
             app:popUpToInclusive="true" />
         <action
             android:id="@+id/action_ProfileSelectorFragment_to_CreateProfileFragment"
             app:destination="@id/CreateProfileFragment" />
+        <action
+            android:id="@+id/action_ProfileSelectorFragment_to_globalSettingsFragment"
+            app:destination="@id/globalSettingsFragment" />
     </fragment>
 
     <fragment
@@ -33,10 +36,10 @@
     </fragment>
 
     <fragment
-        android:id="@+id/dashboardFragment"
-        android:name="brettdansmith.drugdiary.ui.dashboard.DashboardFragment"
-        android:label="Dashboard"
-        tools:layout="@layout/fragment_dashboard" />
+        android:id="@+id/toolsFragment"
+        android:name="brettdansmith.drugdiary.ui.tools.ToolsFragment"
+        android:label="Tools"
+        tools:layout="@layout/fragment_tools" />
 
     <fragment
         android:id="@+id/profileFragment"
@@ -46,6 +49,9 @@
         <action
             android:id="@+id/action_profileFragment_to_medicationsFragment"
             app:destination="@id/medicationsFragment" />
+        <action
+            android:id="@+id/action_profileFragment_to_userSpecificSettingsFragment"
+            app:destination="@id/userSpecificSettingsFragment" />
     </fragment>
 
     <fragment
@@ -97,8 +103,12 @@
         tools:layout="@layout/fragment_support_resources" />
 
     <fragment
-        android:id="@+id/settingsFragment"
-        android:name="brettdansmith.drugdiary.ui.settings.SettingsFragment"
+        android:id="@+id/userSpecificSettingsFragment"
+        android:name="brettdansmith.drugdiary.ui.settings.UserSpecificSettingsFragment"
+        android:label="Profile Settings" />
+
+    <fragment
+        android:id="@+id/globalSettingsFragment"
+        android:name="brettdansmith.drugdiary.ui.settings.GlobalSettingsFragment"
         android:label="Settings" />
 </navigation>
-

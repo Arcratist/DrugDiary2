@@ -25,10 +25,10 @@ import brettdansmith.drugdiary.R;
 import brettdansmith.drugdiary.data.diary.DiaryRepository;
 import brettdansmith.drugdiary.databinding.FragmentDiaryBinding;
 import brettdansmith.drugdiary.domain.units.TimeFormatter;
-import brettdansmith.drugdiary.model.diary.DiaryEntry;
-import brettdansmith.drugdiary.model.diary.MoodCheckIn;
-import brettdansmith.drugdiary.model.diary.SleepLog;
-import brettdansmith.drugdiary.model.diary.SymptomLog;
+import brettdansmith.drugdiary.domain.model.diary.DiaryEntry;
+import brettdansmith.drugdiary.domain.model.diary.MoodCheckIn;
+import brettdansmith.drugdiary.domain.model.diary.SleepLog;
+import brettdansmith.drugdiary.domain.model.diary.SymptomLog;
 
 public class DiaryFragment extends Fragment {
     private FragmentDiaryBinding binding;
@@ -123,4 +123,3 @@ public class DiaryFragment extends Fragment {
         diskExecutor.shutdownNow();
     }
 }
-

@@ -1,29 +1,32 @@
 package brettdansmith.drugdiary.ui.auth;
 
-import brettdansmith.drugdiary.R;
-import brettdansmith.drugdiary.security.EncryptionManager;
-import brettdansmith.drugdiary.security.UserSession;
-
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.net.Uri;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.transition.AutoTransition;
+import android.transition.TransitionManager;
+import android.transition.TransitionSet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
 
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.android.material.imageview.ShapeableImageView;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -34,12 +37,19 @@ import java.util.concurrent.Executors;
 
 import javax.crypto.spec.SecretKeySpec;
 
+import brettdansmith.drugdiary.R;
+import brettdansmith.drugdiary.data.profile.EncryptedProfileStore;
 import brettdansmith.drugdiary.data.profile.ProfileAuthRegistry;
-import brettdansmith.drugdiary.data.reference.DrugReferencePrewarmer;
+import brettdansmith.drugdiary.data.profile.ProfileAvatar;
+import brettdansmith.drugdiary.data.profile.ProfileAvatarDataStore;
 import brettdansmith.drugdiary.databinding.FragmentProfileSelectorBinding;
+import brettdansmith.drugdiary.security.EncryptionManager;
+import brettdansmith.drugdiary.security.UserSession;
+import brettdansmith.drugdiary.settings.AppSettings;
+import brettdansmith.drugdiary.data.reference.DrugReferencePrewarmer;
+import brettdansmith.drugdiary.ui.avatar.ProfileAvatarView;
 
 public class ProfileSelectorFragment extends Fragment {
-
     private FragmentProfileSelectorBinding binding;
     public static final String PREFS_PROFILES = ProfileAuthRegistry.PREFS_PROFILES;
     public static final String KEY_PROFILE_NAMES = ProfileAuthRegistry.KEY_PROFILE_NAMES;
@@ -47,10 +57,11 @@ public class ProfileSelectorFragment extends Fragment {
 
     private String currentPin = "";
     private String selectedProfile = "";
-    private int selectedProfilePinLength = 4;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private int selectedProfilePinLength = 6;
+    private static final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private boolean isLoggingIn = false;
+    private boolean hasProfiles = false;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -61,12 +72,30 @@ public class ProfileSelectorFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        
+        if (savedInstanceState != null) {
+            currentPin = savedInstanceState.getString("currentPin", "");
+            selectedProfile = savedInstanceState.getString("selectedProfile", "");
+        }
+        
         setupPinPad();
         checkProfilesAndLoad();
 
-        binding.layoutSelectedProfile.setOnClickListener(v -> showProfilePickerDialog());
-        
-        binding.btnLoginSettings.setVisibility(View.GONE);
+        binding.layoutSelectedProfile.setOnClickListener(v -> {
+            if (hasProfiles) {
+                toggleProfileExpansion(true);
+            } else {
+                showCreateImportDialog();
+            }
+        });
+        binding.layoutHeaderExpanded.setOnClickListener(v -> {
+            if (hasProfiles) {
+                toggleProfileExpansion(false);
+            }
+        });
+
+        binding.btnGlobalSettings.setOnClickListener(v ->
+                NavHostFragment.findNavController(this).navigate(R.id.action_ProfileSelectorFragment_to_globalSettingsFragment));
     }
 
     private void setupPinPad() {
@@ -80,11 +109,10 @@ public class ProfileSelectorFragment extends Fragment {
             }
         };
 
-        for (int i = 0; i < binding.gridPinButtons.getChildCount(); i++) {
-            View child = binding.gridPinButtons.getChildAt(i);
-            if (child instanceof Button && child.getId() != R.id.btn_delete) {
-                child.setOnClickListener(pinListener);
-            }
+        int[] ids = {R.id.btn_0, R.id.btn_1, R.id.btn_2, R.id.btn_3, R.id.btn_4, R.id.btn_5, R.id.btn_6, R.id.btn_7, R.id.btn_8, R.id.btn_9};
+        for (int id : ids) {
+            View btn = binding.getRoot().findViewById(id);
+            if (btn != null) btn.setOnClickListener(pinListener);
         }
 
         binding.btnDelete.setOnClickListener(v -> {
@@ -96,11 +124,23 @@ public class ProfileSelectorFragment extends Fragment {
     }
 
     private void updatePinDots() {
-        StringBuilder dots = new StringBuilder();
+        binding.layoutPinDots.removeAllViews();
+        int dotSize = (int) (12 * getResources().getDisplayMetrics().density);
+        int margin = (int) (8 * getResources().getDisplayMetrics().density);
+
         for (int i = 0; i < selectedProfilePinLength; i++) {
-            dots.append(i < currentPin.length() ? "* " : "- ");
+            ImageView dot = new ImageView(requireContext());
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dotSize, dotSize);
+            params.setMargins(margin, 0, margin, 0);
+            dot.setLayoutParams(params);
+
+            if (i < currentPin.length()) {
+                dot.setImageResource(R.drawable.pin_dot_filled);
+            } else {
+                dot.setImageResource(R.drawable.pin_dot_empty);
+            }
+            binding.layoutPinDots.addView(dot);
         }
-        binding.textPinDots.setText(dots.toString().trim());
     }
 
     private void checkProfilesAndLoad() {
@@ -109,58 +149,151 @@ public class ProfileSelectorFragment extends Fragment {
         List<String> profiles = new ArrayList<>(profileSet);
 
         if (profiles.isEmpty()) {
-            NavHostFragment.findNavController(this).navigate(R.id.action_ProfileSelectorFragment_to_CreateProfileFragment);
+            hasProfiles = false;
+            showEmptySelectorState();
         } else {
+            hasProfiles = true;
+            showProfilesSelectorState();
             binding.cardProfileSelector.setVisibility(View.VISIBLE);
-            binding.layoutPinPad.setVisibility(View.VISIBLE);
-            selectedProfile = prefs.getString(KEY_LAST_PROFILE, profiles.get(0));
-            selectedProfilePinLength = ProfileAuthRegistry.getPinLength(requireContext(), selectedProfile);
-            binding.textProfileName.setText(selectedProfile);
-            setAvatar(prefs, selectedProfile);
+            if (selectedProfile.isEmpty()) {
+                selectedProfile = prefs.getString(KEY_LAST_PROFILE, profiles.get(0));
+            }
+            updateSelectedProfileDisplay();
         }
-        currentPin = "";
         updatePinDots();
     }
 
-    private void showProfilePickerDialog() {
+    private void showEmptySelectorState() {
+        binding.cardProfileSelector.setVisibility(View.VISIBLE);
+        binding.cardProfileExpanded.setVisibility(View.GONE);
+        binding.textProfileName.setText(R.string.create_or_import_profile);
+        binding.viewAvatarSelected.showAddAvatar();
+        binding.imgArrow.setVisibility(View.VISIBLE);
+        binding.labelEnterPin.setVisibility(View.GONE);
+        binding.layoutPinDots.setVisibility(View.GONE);
+        binding.gridPinButtons.setVisibility(View.GONE);
+        binding.layoutStatusFeedback.setVisibility(View.GONE);
+        selectedProfile = "";
+        setPinPadEnabled(false);
+    }
+
+    private void showProfilesSelectorState() {
+        binding.imgArrow.setVisibility(View.VISIBLE);
+        binding.labelEnterPin.setVisibility(View.VISIBLE);
+        binding.layoutPinDots.setVisibility(View.VISIBLE);
+        binding.gridPinButtons.setVisibility(View.VISIBLE);
+        binding.layoutStatusFeedback.setVisibility(View.VISIBLE);
+        setPinPadEnabled(true);
+    }
+
+    private void updateSelectedProfileDisplay() {
+        SharedPreferences prefs = ProfileAuthRegistry.prefs(requireContext());
+        selectedProfilePinLength = ProfileAuthRegistry.getPinLength(requireContext(), selectedProfile);
+
+        binding.textProfileName.setText(selectedProfile);
+        bindAvatar(selectedProfile, binding.viewAvatarSelected);
+        binding.imgArrow.setVisibility(View.VISIBLE);
+
+        binding.textProfileNameExp.setText(selectedProfile);
+        bindAvatar(selectedProfile, binding.viewAvatarSelectedExp);
+    }
+
+    private void bindAvatar(@NonNull String profileName, @NonNull ProfileAvatarView avatarView) {
+        ProfileAvatar avatar = ProfileAvatarDataStore.readFromPrefs(requireContext(), profileName);
+        avatarView.bind(profileName, avatar);
+    }
+
+    private void toggleProfileExpansion(boolean expand) {
+        if (expand) {
+            populateExpandedList();
+
+            TransitionSet transition = new TransitionSet()
+                    .addTransition(new AutoTransition())
+                    .setDuration(250)
+                    .setOrdering(TransitionSet.ORDERING_TOGETHER);
+
+            TransitionManager.beginDelayedTransition((ViewGroup) binding.getRoot(), transition);
+
+            binding.cardProfileExpanded.setVisibility(View.VISIBLE);
+            binding.cardProfileSelector.setAlpha(0f);
+            binding.dividerExpanded.setVisibility(View.VISIBLE);
+            binding.scrollOtherProfiles.setVisibility(View.VISIBLE);
+            binding.scrollOtherProfiles.setAlpha(1f);
+        } else {
+            TransitionSet transition = new TransitionSet()
+                    .addTransition(new AutoTransition())
+                    .setDuration(200);
+
+            TransitionManager.beginDelayedTransition((ViewGroup) binding.getRoot(), transition);
+
+            binding.scrollOtherProfiles.setAlpha(0f);
+            binding.scrollOtherProfiles.setVisibility(View.GONE);
+            binding.dividerExpanded.setVisibility(View.GONE);
+            binding.cardProfileExpanded.setVisibility(View.GONE);
+            binding.cardProfileSelector.setAlpha(1f);
+        }
+    }
+
+    private void populateExpandedList() {
         SharedPreferences prefs = ProfileAuthRegistry.prefs(requireContext());
         Set<String> profileSet = prefs.getStringSet(KEY_PROFILE_NAMES, new HashSet<>());
         List<String> profiles = new ArrayList<>(profileSet);
-        
-        List<String> displayList = new ArrayList<>(profiles);
-        displayList.add("Add New Profile");
+        profiles.remove(selectedProfile);
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(requireContext(), R.layout.item_profile_selection, R.id.text_item_name, displayList) {
-            @NonNull
-            @Override
-            public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-                View view = super.getView(position, convertView, parent);
-                ShapeableImageView avatar = view.findViewById(R.id.image_item_avatar);
-                String item = getItem(position);
-                if ("Add New Profile".equals(item)) {
-                    avatar.setImageResource(android.R.drawable.ic_input_add);
-                } else {
-                    avatar.setImageResource(avatarRes(prefs.getInt("icon_" + item, 1)));
-                }
-                return view;
-            }
-        };
+        binding.containerOtherProfiles.removeAllViews();
+        LayoutInflater inflater = LayoutInflater.from(requireContext());
 
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Select Profile")
-                .setAdapter(adapter, (dialog, which) -> {
-                    if (which == profiles.size()) {
-                        NavHostFragment.findNavController(this).navigate(R.id.action_ProfileSelectorFragment_to_CreateProfileFragment);
-                    } else {
-                        selectedProfile = profiles.get(which);
-                        selectedProfilePinLength = ProfileAuthRegistry.getPinLength(requireContext(), selectedProfile);
-                        binding.textProfileName.setText(selectedProfile);
-                        setAvatar(prefs, selectedProfile);
-                        currentPin = "";
-                        updatePinDots();
-                    }
-                })
-                .show();
+        for (String profile : profiles) {
+            View itemView = inflater.inflate(R.layout.item_profile_selection, binding.containerOtherProfiles, false);
+            TextView nameText = itemView.findViewById(R.id.text_item_name);
+            ProfileAvatarView avatarView = itemView.findViewById(R.id.view_item_avatar);
+
+            nameText.setText(profile);
+            bindAvatar(profile, avatarView);
+
+            itemView.setOnClickListener(v -> {
+                selectedProfile = profile;
+                updateSelectedProfileDisplay();
+                toggleProfileExpansion(false);
+                currentPin = "";
+                updatePinDots();
+            });
+
+            binding.containerOtherProfiles.addView(itemView);
+        }
+
+        View addView = inflater.inflate(R.layout.item_profile_selection, binding.containerOtherProfiles, false);
+        TextView addText = addView.findViewById(R.id.text_item_name);
+        ProfileAvatarView addAvatar = addView.findViewById(R.id.view_item_avatar);
+
+        addText.setText(R.string.create_or_import_profile);
+        addAvatar.showAddAvatar();
+
+        addView.setOnClickListener(v -> showCreateImportDialog());
+
+        binding.containerOtherProfiles.addView(addView);
+    }
+
+    private void showCreateImportDialog() {
+        if (getContext() == null) return;
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_profile_entry_action, null);
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setView(dialogView)
+                .create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+        dialogView.findViewById(R.id.button_create_profile).setOnClickListener(v -> {
+            dialog.dismiss();
+            NavHostFragment.findNavController(this).navigate(R.id.action_ProfileSelectorFragment_to_CreateProfileFragment);
+        });
+        dialogView.findViewById(R.id.button_import_profile).setOnClickListener(v ->
+        {
+            Toast.makeText(requireContext(), R.string.import_profile_nyi, Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        });
+        dialogView.findViewById(R.id.button_cancel_profile_entry).setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
     }
 
     private void attemptLogin() {
@@ -170,6 +303,8 @@ public class ProfileSelectorFragment extends Fragment {
         isLoggingIn = true;
         setPinPadEnabled(false);
         binding.progressUnlocking.setVisibility(View.VISIBLE);
+        binding.imgUnlockError.setVisibility(View.GONE);
+        binding.textUnlockStatus.setText(R.string.unlocking_profile);
         binding.textUnlockStatus.setVisibility(View.VISIBLE);
 
         String pinToProcess = currentPin;
@@ -179,28 +314,48 @@ public class ProfileSelectorFragment extends Fragment {
                 if (ProfileAuthRegistry.verifyPin(appContext, profileToProcess, pinToProcess)) {
                     SecretKeySpec key = EncryptionManager.deriveKey(profileToProcess + pinToProcess);
                     UserSession.getInstance().startSession(profileToProcess, key);
+                    syncAvatarPrefsToVault(appContext, profileToProcess);
                     DrugReferencePrewarmer.prewarmAfterUnlock(appContext);
                     mainHandler.post(() -> {
                         if (binding == null) return;
+
+                        AppCompatDelegate.setDefaultNightMode(AppSettings.getTheme(appContext));
+
                         prefs.edit().putString(KEY_LAST_PROFILE, profileToProcess).apply();
-                        NavHostFragment.findNavController(this).navigate(R.id.action_ProfileSelectorFragment_to_dashboardFragment);
+                        NavHostFragment.findNavController(this).navigate(R.id.action_ProfileSelectorFragment_to_profileFragment);
                     });
                 } else {
-                    mainHandler.post(() -> {
-                        if (binding == null) return;
-                        Toast.makeText(getContext(), "Incorrect PIN", Toast.LENGTH_SHORT).show();
-                        resetPin();
-                    });
+                    mainHandler.post(() -> showAuthError(getString(R.string.incorrect_pin)));
                 }
             } catch (Exception e) {
                 UserSession.getInstance().endSession();
-                mainHandler.post(() -> {
-                    if (binding == null) return;
-                    Toast.makeText(getContext(), "Auth Error", Toast.LENGTH_SHORT).show();
-                    resetPin();
-                });
+                mainHandler.post(() -> showAuthError("Authentication Error"));
             }
         });
+    }
+
+    private void syncAvatarPrefsToVault(@NonNull Context appContext, @NonNull String profileName) {
+        try {
+            ProfileAvatar avatar = ProfileAvatarDataStore.readFromPrefs(appContext, profileName);
+            JSONObject data = EncryptedProfileStore.loadProfileData(appContext);
+            ProfileAvatarDataStore.writeToData(data, avatar);
+            EncryptedProfileStore.saveProfileData(appContext, data);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void showAuthError(String message) {
+        if (binding == null) return;
+        binding.progressUnlocking.setVisibility(View.GONE);
+        binding.imgUnlockError.setVisibility(View.VISIBLE);
+        binding.textUnlockStatus.setText(message);
+        binding.textUnlockStatus.setVisibility(View.VISIBLE);
+
+        mainHandler.postDelayed(() -> {
+            if (binding != null) {
+                resetPin();
+            }
+        }, 1500);
     }
 
     private void resetPin() {
@@ -209,33 +364,28 @@ public class ProfileSelectorFragment extends Fragment {
         updatePinDots();
         setPinPadEnabled(true);
         binding.progressUnlocking.setVisibility(View.GONE);
+        binding.imgUnlockError.setVisibility(View.GONE);
         binding.textUnlockStatus.setVisibility(View.GONE);
     }
 
     private void setPinPadEnabled(boolean enabled) {
-        binding.layoutPinPad.setAlpha(enabled ? 1.0f : 0.55f);
+        if (binding == null) return;
+        binding.gridPinButtons.setAlpha(enabled ? 1.0f : 0.55f);
         for (int i = 0; i < binding.gridPinButtons.getChildCount(); i++) {
             binding.gridPinButtons.getChildAt(i).setEnabled(enabled);
         }
-        binding.layoutSelectedProfile.setEnabled(enabled);
-    }
-
-    private int avatarRes(int avatar) {
-        switch (avatar) {
-            case 2: return R.drawable.avatar_placeholder_2;
-            case 3: return R.drawable.avatar_placeholder_3;
-            case 4: return R.drawable.avatar_placeholder_4;
-            default: return R.drawable.avatar_placeholder_1;
-        }
-    }
-
-    private void setAvatar(SharedPreferences prefs, String profile) {
-        String uri = prefs.getString("avatar_uri_" + profile, "");
-        if (!uri.isEmpty()) {
-            binding.imageAvatar.setImageURI(Uri.parse(uri));
+        if (hasProfiles) {
+            binding.layoutSelectedProfile.setEnabled(enabled);
         } else {
-            binding.imageAvatar.setImageResource(avatarRes(prefs.getInt("icon_" + profile, 1)));
+            binding.layoutSelectedProfile.setEnabled(true);
         }
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString("currentPin", currentPin);
+        outState.putString("selectedProfile", selectedProfile);
     }
 
     @Override
@@ -248,10 +398,5 @@ public class ProfileSelectorFragment extends Fragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        executor.shutdown();
     }
 }
-
-
-
-

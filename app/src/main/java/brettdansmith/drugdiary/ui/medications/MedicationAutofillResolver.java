@@ -10,7 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import brettdansmith.drugdiary.domain.medication.MedicationCatalog;
-import brettdansmith.drugdiary.model.medication.MedicationCategory;
+import brettdansmith.drugdiary.domain.model.medication.MedicationCategory;
 
 final class MedicationAutofillResolver {
     private static final Pattern STRENGTH_PATTERN = Pattern.compile("([0-9]+(?:\\.[0-9]+)?\\s*(?:mcg|mg|g|ml|iu|units?))", Pattern.CASE_INSENSITIVE);

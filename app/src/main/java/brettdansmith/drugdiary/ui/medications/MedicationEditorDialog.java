@@ -25,10 +25,10 @@ import brettdansmith.drugdiary.R;
 import brettdansmith.drugdiary.data.medication.MedicationRepository;
 import brettdansmith.drugdiary.data.reference.DrugReferenceRepository;
 import brettdansmith.drugdiary.domain.medication.MedicationCatalog;
-import brettdansmith.drugdiary.model.medication.MedicationCategory;
-import brettdansmith.drugdiary.model.medication.MedicationInventory;
-import brettdansmith.drugdiary.model.medication.MedicationRecord;
-import brettdansmith.drugdiary.model.medication.MedicationSchedule;
+import brettdansmith.drugdiary.domain.model.medication.MedicationCategory;
+import brettdansmith.drugdiary.domain.model.medication.MedicationInventory;
+import brettdansmith.drugdiary.domain.model.medication.MedicationRecord;
+import brettdansmith.drugdiary.domain.model.medication.MedicationSchedule;
 
 final class MedicationEditorDialog {
     private MedicationEditorDialog() {

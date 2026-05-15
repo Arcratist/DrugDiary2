@@ -81,9 +81,8 @@ public final class ProfileAuthRegistry {
                 .remove(PIN_HASH_PREFIX + profileName)
                 .remove(PIN_SALT_PREFIX + profileName)
                 .remove(PIN_LENGTH_PREFIX + profileName)
-                .remove(LEGACY_PIN_PREFIX + profileName)
-                .remove("icon_" + profileName)
-                .remove("avatar_uri_" + profileName);
+                .remove(LEGACY_PIN_PREFIX + profileName);
+        ProfileAvatarPrefsStore.remove(editor, profileName);
         if (profileName.equals(prefs(context).getString(KEY_LAST_PROFILE, ""))) {
             editor.remove(KEY_LAST_PROFILE);
         }
@@ -100,4 +99,3 @@ public final class ProfileAuthRegistry {
         return MessageDigest.isEqual(first.getBytes(), second.getBytes());
     }
 }
-

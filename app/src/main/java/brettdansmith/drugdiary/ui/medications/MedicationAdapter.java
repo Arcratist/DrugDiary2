@@ -16,7 +16,7 @@ import com.google.android.material.button.MaterialButton;
 
 import brettdansmith.drugdiary.R;
 import brettdansmith.drugdiary.domain.units.TimeFormatter;
-import brettdansmith.drugdiary.model.medication.MedicationRecord;
+import brettdansmith.drugdiary.domain.model.medication.MedicationRecord;
 
 public class MedicationAdapter extends ListAdapter<MedicationRecord, MedicationAdapter.MedicationViewHolder> {
 

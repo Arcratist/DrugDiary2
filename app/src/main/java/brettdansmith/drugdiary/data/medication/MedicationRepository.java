@@ -15,9 +15,9 @@ import java.util.List;
 import brettdansmith.drugdiary.data.profile.EncryptedProfileStore;
 import brettdansmith.drugdiary.data.profile.ProfileJson;
 import brettdansmith.drugdiary.domain.medication.MedicationCatalog;
-import brettdansmith.drugdiary.model.medication.MedicationCategory;
-import brettdansmith.drugdiary.model.medication.MedicationDoseLog;
-import brettdansmith.drugdiary.model.medication.MedicationRecord;
+import brettdansmith.drugdiary.domain.model.medication.MedicationCategory;
+import brettdansmith.drugdiary.domain.model.medication.MedicationDoseLog;
+import brettdansmith.drugdiary.domain.model.medication.MedicationRecord;
 
 public final class MedicationRepository {
     private final Context appContext;
@@ -225,4 +225,3 @@ public final class MedicationRepository {
         return ProfileJson.array(trackers, ProfileJson.KEY_MEDICATIONS);
     }
 }
-

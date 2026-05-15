@@ -110,7 +110,7 @@ public class MedicationsFragment extends Fragment {
                     }
                     MedicationRepository repository = new MedicationRepository(requireContext());
                     int imported = 0;
-                    for (brettdansmith.drugdiary.model.medication.MedicationRecord record : result.records()) {
+                    for (brettdansmith.drugdiary.domain.model.medication.MedicationRecord record : result.records()) {
                         try {
                             repository.upsertRecord(record);
                             imported++;
@@ -129,4 +129,3 @@ public class MedicationsFragment extends Fragment {
         binding = null;
     }
 }
-

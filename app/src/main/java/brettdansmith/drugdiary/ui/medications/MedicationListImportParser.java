@@ -8,10 +8,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import brettdansmith.drugdiary.domain.medication.MedicationCatalog;
-import brettdansmith.drugdiary.model.medication.MedicationCategory;
-import brettdansmith.drugdiary.model.medication.MedicationInventory;
-import brettdansmith.drugdiary.model.medication.MedicationRecord;
-import brettdansmith.drugdiary.model.medication.MedicationSchedule;
+import brettdansmith.drugdiary.domain.model.medication.MedicationCategory;
+import brettdansmith.drugdiary.domain.model.medication.MedicationInventory;
+import brettdansmith.drugdiary.domain.model.medication.MedicationRecord;
+import brettdansmith.drugdiary.domain.model.medication.MedicationSchedule;
 
 public final class MedicationListImportParser {
     private static final Pattern DETAILS_SPLIT = Pattern.compile("\\s+[\\u2014\\u2013-]\\s+");

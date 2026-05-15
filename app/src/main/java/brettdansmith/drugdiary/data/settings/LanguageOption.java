@@ -1,18 +1,24 @@
 package brettdansmith.drugdiary.data.settings;
 
 public enum LanguageOption {
-    SYSTEM("system"),
-    ENGLISH("en"),
-    SPANISH("es");
+    SYSTEM("system", "System"),
+    ENGLISH("en", "English"),
+    SPANISH("es", "Spanish");
 
     private final String languageTag;
+    private final String displayName;
 
-    LanguageOption(String languageTag) {
+    LanguageOption(String languageTag, String displayName) {
         this.languageTag = languageTag;
+        this.displayName = displayName;
     }
 
     public String languageTag() {
         return languageTag;
+    }
+
+    public String displayName() {
+        return displayName;
     }
 
     public static LanguageOption fromTag(String tag) {
@@ -24,4 +30,3 @@ public enum LanguageOption {
         return SYSTEM;
     }
 }
-

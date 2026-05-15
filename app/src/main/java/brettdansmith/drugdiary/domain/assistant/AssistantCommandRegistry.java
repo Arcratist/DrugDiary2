@@ -24,11 +24,14 @@ import brettdansmith.drugdiary.data.reference.DrugReferenceRepository;
 import brettdansmith.drugdiary.data.settings.ProviderSettings;
 import brettdansmith.drugdiary.data.settings.SettingsRepository;
 import brettdansmith.drugdiary.data.settings.SettingsState;
+import brettdansmith.drugdiary.data.settings.EffectiveSettings;
 import brettdansmith.drugdiary.domain.medication.MedicationCatalog;
 import brettdansmith.drugdiary.domain.medication.MedicationQueryResolver;
-import brettdansmith.drugdiary.model.diary.DiaryEntry;
-import brettdansmith.drugdiary.model.medication.MedicationCategory;
-import brettdansmith.drugdiary.model.medication.MedicationRecord;
+import brettdansmith.drugdiary.domain.model.diary.DiaryEntry;
+import brettdansmith.drugdiary.domain.model.medication.MedicationCategory;
+import brettdansmith.drugdiary.domain.model.medication.MedicationRecord;
+import brettdansmith.drugdiary.domain.model.medication.MedicationSchedule;
+import brettdansmith.drugdiary.domain.model.medication.MedicationInventory;
 import brettdansmith.drugdiary.network.ai.capabilities.AiCapabilityRegistry;
 import brettdansmith.drugdiary.reference.DrugDatabaseRepository;
 import brettdansmith.drugdiary.reference.DrugInteractionRepository;
@@ -77,7 +80,7 @@ public final class AssistantCommandRegistry {
         }
         String lower = normalize(command);
 
-        if (isMedicationCommand(command) && !AppSettings.state(appContext).assistantMedicationContext) {
+        if (isMedicationCommand(command) && !AppSettings.effective(appContext).aiMedicationContext) {
             return PRIVACY_REJECTED;
         }
 
@@ -153,7 +156,7 @@ public final class AssistantCommandRegistry {
 
     public String handleAsyncCommand(String command, ProgressCallback callback) throws Exception {
         String lower = normalize(command);
-        if (isMedicationCommand(command) && !AppSettings.state(appContext).assistantMedicationContext) {
+        if (isMedicationCommand(command) && !AppSettings.effective(appContext).aiMedicationContext) {
             return PRIVACY_REJECTED;
         }
 
@@ -261,8 +264,8 @@ public final class AssistantCommandRegistry {
                     true,
                     false,
                     "Added via assistant command",
-                    new brettdansmith.drugdiary.model.medication.MedicationSchedule("scheduled", "", 0),
-                    new brettdansmith.drugdiary.model.medication.MedicationInventory(0, "units", 0, 0),
+                    new MedicationSchedule("scheduled", "", 0),
+                    new MedicationInventory(0, "units", 0, 0),
                     MedicationCatalog.aliasesFor(name),
                     System.currentTimeMillis(),
                     System.currentTimeMillis());
@@ -759,7 +762,7 @@ public final class AssistantCommandRegistry {
         SettingsRepository repository = new SettingsRepository(appContext);
         SettingsState state = repository.getState();
         ProviderSettings provider = repository.getProviderSettings(state.assistantProvider);
-        brettdansmith.drugdiary.model.ai.ProviderCapabilities caps = AiCapabilityRegistry.forProvider(state.assistantProvider);
+        brettdansmith.drugdiary.domain.model.ai.ProviderCapabilities caps = AiCapabilityRegistry.forProvider(state.assistantProvider);
 
         StringBuilder sb = new StringBuilder("### Effective assistant settings\n");
         sb.append("- Provider: ").append(state.assistantProvider.displayName()).append("\n");
@@ -780,14 +783,13 @@ public final class AssistantCommandRegistry {
     }
 
     private String privacyText() {
-        SettingsState state = AppSettings.state(appContext);
+        EffectiveSettings effective = AppSettings.effective(appContext);
         StringBuilder sb = new StringBuilder("### Assistant privacy\n");
-        sb.append("- Assistant memory: ").append(state.assistantMemory).append("\n");
-        sb.append("- Profile context: ").append(state.assistantProfileContext).append("\n");
-        sb.append("- Medication context: ").append(state.assistantMedicationContext).append("\n");
-        sb.append("- Diary/log context: ").append(state.assistantLogContext).append("\n");
-        sb.append("- Private mode: ").append(AppSettings.privateModeEnabled(appContext)).append("\n");
-        sb.append("- Dashboard sensitive hidden: ").append(AppSettings.hideDashboardSensitive(appContext));
+        sb.append("- Profile context: ").append(effective.aiProfileContext).append("\n");
+        sb.append("- Medication context: ").append(effective.aiMedicationContext).append("\n");
+        sb.append("- Diary/log context: ").append(effective.aiLogContext).append("\n");
+        sb.append("- Private mode: ").append(effective.privateMode).append("\n");
+        sb.append("- Dashboard sensitive hidden: ").append(effective.hideDashboardSensitive);
         return sb.toString();
     }
 
@@ -850,4 +852,3 @@ public final class AssistantCommandRegistry {
                 + "- [[command:/placeholders]]";
     }
 }
-

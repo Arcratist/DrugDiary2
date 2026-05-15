@@ -31,7 +31,7 @@ public final class ProfileRepository {
         EncryptedProfileStore.saveProfileData(appContext, data);
     }
 
-    public void createProfile(String name, String pin, JSONObject data, int avatar, String avatarUri) throws Exception {
+    public void createProfile(String name, String pin, JSONObject data, ProfileAvatar avatar) throws Exception {
         SecretKeySpec key = EncryptionManager.deriveKey(name + pin);
         EncryptedProfileStore.createProfileVault(appContext, name, key, data);
         ProfileAuthRegistry.saveProfilePin(appContext, name, pin);
@@ -41,10 +41,9 @@ public final class ProfileRepository {
         profileSet.add(name);
         prefs.edit()
                 .putStringSet(ProfileAuthRegistry.KEY_PROFILE_NAMES, profileSet)
-                .putInt("icon_" + name, avatar)
-                .putString("avatar_uri_" + name, avatarUri == null ? "" : avatarUri)
                 .putString(ProfileAuthRegistry.KEY_LAST_PROFILE, name)
                 .apply();
+        ProfileAvatarPrefsStore.save(appContext, name, avatar);
     }
 
     public boolean changePin(String profileName, String currentPin, String nextPin) throws Exception {

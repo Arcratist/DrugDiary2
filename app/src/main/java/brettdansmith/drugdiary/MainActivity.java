@@ -7,8 +7,10 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.StateListDrawable;
 import android.graphics.drawable.ColorDrawable;
-import android.net.Uri;
+import android.graphics.drawable.LayerDrawable;
+import android.content.res.ColorStateList;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -22,12 +24,16 @@ import android.view.WindowManager;
 import android.widget.CheckBox;
 import android.widget.Toast;
 
-import java.io.InputStream;
-
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.view.MenuItemCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
@@ -35,10 +41,14 @@ import androidx.navigation.ui.NavigationUI;
 import androidx.navigation.ui.AppBarConfiguration;
 
 import brettdansmith.drugdiary.security.UserSession;
+import brettdansmith.drugdiary.data.profile.AvatarType;
+import brettdansmith.drugdiary.data.profile.ProfileAvatar;
+import brettdansmith.drugdiary.data.profile.ProfileAvatarDataStore;
 import brettdansmith.drugdiary.data.settings.SettingsRepository;
 import brettdansmith.drugdiary.ui.assistant.AssistantNotificationController;
 import brettdansmith.drugdiary.ui.assistant.AssistantViewModel;
 import brettdansmith.drugdiary.ui.auth.ProfileSelectorFragment;
+import brettdansmith.drugdiary.ui.avatar.AvatarNavIconFactory;
 import brettdansmith.drugdiary.settings.AppSettings;
 import brettdansmith.drugdiary.databinding.ActivityMainBinding;
 
@@ -77,34 +87,26 @@ public class MainActivity extends AppCompatActivity {
         setupBottomNavigation(navController);
 
         appBarConfiguration = new AppBarConfiguration.Builder(
-                R.id.dashboardFragment, R.id.profileFragment, R.id.assistantFragment,
-                R.id.diaryFragment, R.id.resourcesFragment
+                R.id.profileFragment, R.id.diaryFragment, R.id.assistantFragment,
+                R.id.toolsFragment, R.id.resourcesFragment
         ).build();
         
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
-
-        binding.toolbar.setNavigationIcon(null);
-        binding.toolbar.setNavigationOnClickListener(null);
 
         navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
             int destId = destination.getId();
             currentDestinationId = destId;
             invalidateOptionsMenu();
             boolean isLoggedIn = UserSession.getInstance().isActive();
-            boolean isAuthScreen = destId == R.id.ProfileSelectorFragment || destId == R.id.CreateProfileFragment;
+            boolean isAuthScreen = destId == R.id.ProfileSelectorFragment || destId == R.id.CreateProfileFragment || destId == R.id.globalSettingsFragment;
+
+            binding.appBar.setVisibility(View.GONE);
 
             if (isAuthScreen) {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-                binding.toolbar.setVisibility(View.GONE);
                 binding.bottomNav.setVisibility(View.GONE);
-                if (getSupportActionBar() != null) getSupportActionBar().hide();
             } else {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-                binding.toolbar.setVisibility(View.VISIBLE);
-                if (getSupportActionBar() != null) getSupportActionBar().show();
-                binding.toolbar.setNavigationIcon(null);
-                binding.toolbar.setNavigationOnClickListener(null);
-
                 if (!isLoggedIn) {
                     controller.navigate(R.id.ProfileSelectorFragment);
                 }
@@ -127,23 +129,30 @@ public class MainActivity extends AppCompatActivity {
                 
                 int destId = controller.getCurrentDestination().getId();
 
-                if (destId == R.id.dashboardFragment || destId == R.id.ProfileSelectorFragment) {
+                if (destId == R.id.profileFragment || destId == R.id.ProfileSelectorFragment) {
                     backPressCount++;
                     backPressHandler.removeCallbacks(backPressResetRunnable);
                     if (panicToast != null) panicToast.cancel();
-                    panicToast = Toast.makeText(MainActivity.this, "Panic logout in " + (5 - backPressCount) + "...", Toast.LENGTH_SHORT);
-                    panicToast.show();
-                    if (backPressCount >= 5) {
-                        if (panicToast != null) panicToast.cancel();
-                        logout();
-                    } else {
+
+                    String action = (destId == R.id.ProfileSelectorFragment) ? "Exit" : "Panic logout";
+                    int remaining = 3 - backPressCount;
+
+                    if (remaining > 0) {
+                        panicToast = Toast.makeText(MainActivity.this, action + " in " + remaining + "...", Toast.LENGTH_SHORT);
+                        panicToast.show();
                         backPressHandler.postDelayed(backPressResetRunnable, 1500);
+                    } else {
+                        if (destId == R.id.ProfileSelectorFragment) {
+                            finish();
+                        } else {
+                            logout();
+                        }
                     }
                 } else if (appBarConfiguration.getTopLevelDestinations().contains(destId)) {
-                    controller.navigate(R.id.dashboardFragment);
+                    controller.navigate(R.id.profileFragment);
                 } else {
                     if (!controller.popBackStack()) {
-                        controller.navigate(R.id.dashboardFragment);
+                        controller.navigate(R.id.profileFragment);
                     }
                 }
             }
@@ -156,6 +165,39 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupBottomNavigation(NavController navController) {
+        // Disable default tinting to allow per-item custom tinting
+        binding.bottomNav.setItemIconTintList(null);
+        ColorStateList navTint = AppCompatResources.getColorStateList(this, R.color.nav_item_tint);
+        binding.bottomNav.setItemTextColor(navTint);
+
+        int selectedColor = navTint.getColorForState(new int[]{android.R.attr.state_selected}, 
+                navTint.getColorForState(new int[]{android.R.attr.state_checked}, navTint.getDefaultColor()));
+        int defaultColor = navTint.getDefaultColor();
+
+        Menu menu = binding.bottomNav.getMenu();
+        for (int i = 0; i < menu.size(); i++) {
+            MenuItem item = menu.getItem(i);
+            if (item.getItemId() != R.id.profileFragment) {
+                Drawable icon = item.getIcon();
+                if (icon != null) {
+                    StateListDrawable sld = new StateListDrawable();
+                    
+                    Drawable selectedIcon = icon.mutate();
+                    Drawable wrappedSelected = DrawableCompat.wrap(selectedIcon);
+                    DrawableCompat.setTint(wrappedSelected, selectedColor);
+                    sld.addState(new int[]{android.R.attr.state_selected}, wrappedSelected);
+                    sld.addState(new int[]{android.R.attr.state_checked}, wrappedSelected);
+                    
+                    Drawable normalIcon = icon.mutate();
+                    Drawable wrappedNormal = DrawableCompat.wrap(normalIcon);
+                    DrawableCompat.setTint(wrappedNormal, defaultColor);
+                    sld.addState(new int[]{}, wrappedNormal);
+                    
+                    item.setIcon(sld);
+                }
+            }
+        }
+
         binding.bottomNav.setOnItemSelectedListener(item -> {
             if (!UserSession.getInstance().isActive()) return true;
             int itemId = item.getItemId();
@@ -215,12 +257,16 @@ public class MainActivity extends AppCompatActivity {
         UserSession.getInstance().endSession();
         backPressCount = 0;
         new ViewModelProvider(this).get(AssistantViewModel.class).clear();
+        
+        // Return to global theme
+        AppCompatDelegate.setDefaultNightMode(AppSettings.getTheme(this));
+        
         Navigation.findNavController(this, R.id.nav_host_fragment_content_main)
                 .navigate(R.id.ProfileSelectorFragment);
     }
 
     public void showSettingsMenu(View anchor, NavController navController) {
-        navController.navigate(R.id.settingsFragment);
+        navController.navigate(R.id.userSpecificSettingsFragment);
     }
 
     private void updateProfileNavIcon() {
@@ -230,39 +276,39 @@ public class MainActivity extends AppCompatActivity {
             if (profileName.isEmpty()) {
                 return;
             }
-
-            Drawable icon = null;
-            String avatarUri = prefs.getString("avatar_uri_" + profileName, "");
-            if (!avatarUri.isEmpty()) {
-                try (InputStream stream = getContentResolver().openInputStream(Uri.parse(avatarUri))) {
-                    icon = Drawable.createFromStream(stream, "profile_avatar");
-                } catch (Exception ignored) {
-                    icon = null;
-                }
-            }
-            if (icon == null) {
-                icon = getDrawable(avatarRes(prefs.getInt("icon_" + profileName, 1)));
-            }
-            if (icon != null) {
-                binding.bottomNav.getMenu().findItem(R.id.profileFragment).setIcon(icon);
-            }
+            ProfileAvatar avatar = ProfileAvatarDataStore.readFromPrefs(this, profileName);
+            applyProfileNavIcon(profileName, avatar);
         } catch (Exception ignored) {
-            binding.bottomNav.getMenu().findItem(R.id.profileFragment).setIcon(R.drawable.avatar_placeholder_1);
+            ProfileAvatar fallback = ProfileAvatar.initials();
+            applyProfileNavIcon(getString(R.string.user_name), fallback);
         }
     }
 
-    private int avatarRes(int avatar) {
-        switch (avatar) {
-            case 2: return R.drawable.avatar_placeholder_2;
-            case 3: return R.drawable.avatar_placeholder_3;
-            case 4: return R.drawable.avatar_placeholder_4;
-            default: return R.drawable.avatar_placeholder_1;
+    public void refreshProfileNavIconNow(@NonNull String profileName, @NonNull ProfileAvatar avatar) {
+        applyProfileNavIcon(profileName, avatar);
+    }
+
+    private void applyProfileNavIcon(@Nullable String profileName, @Nullable ProfileAvatar avatar) {
+        ProfileAvatar safeAvatar = avatar == null ? ProfileAvatar.initials() : avatar;
+        int iconSize = getResources().getDimensionPixelSize(R.dimen.icon_size_nav);
+        Drawable icon = AvatarNavIconFactory.create(
+                this,
+                profileName,
+                safeAvatar,
+                iconSize);
+
+        MenuItem profileItem = binding.bottomNav.getMenu().findItem(R.id.profileFragment);
+        if (profileItem != null) {
+            profileItem.setIcon(icon);
+            MenuItemCompat.setIconTintList(profileItem, null);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                profileItem.setIconTintList(null);
+            }
+            binding.bottomNav.post(binding.bottomNav::invalidate);
         }
     }
 
     private void checkWelcomeScreen() {
-        // Configuration changes recreate the Activity; the welcome dialog is a launch prompt, not
-        // a rotation prompt. Keep the setting dialog path separate through showWelcomeDialog(false).
         if (welcomeCheckedThisProcess) return;
         welcomeCheckedThisProcess = true;
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -304,18 +350,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public boolean onPrepareOptionsMenu(Menu menu) {
-        MenuItem settings = menu.findItem(R.id.action_settings_dropdown);
-        if (settings != null) {
-            settings.setVisible(UserSession.getInstance().isActive() && currentDestinationId == R.id.dashboardFragment);
-        }
-        return super.onPrepareOptionsMenu(menu);
-    }
-
-    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.action_settings_dropdown) {
-            Navigation.findNavController(this, R.id.nav_host_fragment_content_main).navigate(R.id.settingsFragment);
+        if (item.getItemId() == android.R.id.home) {
+            onBackPressed();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -326,5 +363,3 @@ public class MainActivity extends AppCompatActivity {
         return Navigation.findNavController(this, R.id.nav_host_fragment_content_main).navigateUp() || super.onSupportNavigateUp();
     }
 }
-
-

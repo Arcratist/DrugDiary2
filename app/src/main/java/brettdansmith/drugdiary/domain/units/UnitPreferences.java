@@ -2,7 +2,7 @@ package brettdansmith.drugdiary.domain.units;
 
 import android.content.Context;
 
-import brettdansmith.drugdiary.data.settings.SettingsRepository;
+import brettdansmith.drugdiary.data.settings.SettingsResolver;
 import brettdansmith.drugdiary.data.settings.UnitSystem;
 
 public final class UnitPreferences {
@@ -13,7 +13,7 @@ public final class UnitPreferences {
     }
 
     public static UnitPreferences from(Context context) {
-        return new UnitPreferences(new SettingsRepository(context).getState().unitSystem);
+        return new UnitPreferences(SettingsResolver.getEffectiveSettings(context).unitSystem);
     }
 
     public UnitSystem unitSystem() {
@@ -36,4 +36,3 @@ public final class UnitPreferences {
         return isMetric() ? "ml" : "fl oz";
     }
 }
-

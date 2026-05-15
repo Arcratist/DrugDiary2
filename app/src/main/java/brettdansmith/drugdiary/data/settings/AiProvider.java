@@ -3,13 +3,13 @@ package brettdansmith.drugdiary.data.settings;
 public enum AiProvider {
     OPENAI("openai", "ChatGPT (OpenAI)", "gpt-4o-mini"),
     ANTHROPIC("anthropic", "Claude (Anthropic)", "claude-3-5-sonnet-latest"),
-    GEMINI("gemini", "Gemini (Google)", "gemini-2.5-flash-lite"),
+    GEMINI("gemini", "Gemini (Google)", "gemini-1.5-flash"),
     DEEPSEEK("deepseek", "DeepSeek", "deepseek-chat"),
-    XAI("xai", "Grok (xAI)", "grok-4"),
-    GROQ("groq", "Groq", "meta-llama/llama-4-scout-17b-16e-instruct"),
+    XAI("xai", "Grok (xAI)", "grok-2-1212"),
+    GROQ("groq", "Groq", "llama-3.3-70b-versatile"),
     MISTRAL("mistral", "Mistral AI", "mistral-large-latest"),
     PERPLEXITY("perplexity", "Perplexity Sonar", "sonar"),
-    OPENROUTER("openrouter", "OpenRouter (All Models)", "meta-llama/llama-3.1-70b-instruct");
+    OPENROUTER("openrouter", "OpenRouter (All Models)", "meta-llama/llama-3.3-70b-instruct");
 
     private final String preferenceValue;
     private final String displayName;

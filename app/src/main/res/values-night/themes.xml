@@ -19,7 +19,7 @@
         <item name="android:windowBackground">@color/dark_bg_primary</item>
         <item name="colorSurface">@color/dark_surface</item>
         <item name="colorOnSurface">@color/dark_text_primary</item>
-        <item name="colorSurfaceVariant">@color/dark_bg_secondary</item>
+        <item name="colorSurfaceVariant">@color/dark_surface</item>
         <item name="colorOnSurfaceVariant">@color/dark_text_secondary</item>
 
         <!-- Feedback & Outline -->

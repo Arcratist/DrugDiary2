@@ -4,7 +4,7 @@ import java.util.EnumMap;
 import java.util.Map;
 
 import brettdansmith.drugdiary.data.settings.AiProvider;
-import brettdansmith.drugdiary.model.ai.ProviderCapabilities;
+import brettdansmith.drugdiary.domain.model.ai.ProviderCapabilities;
 
 public final class AiCapabilityRegistry {
     private static final Map<AiProvider, ProviderCapabilities> CAPS = new EnumMap<>(AiProvider.class);
@@ -30,4 +30,3 @@ public final class AiCapabilityRegistry {
         return new ProviderCapabilities(true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, false, false, false);
     }
 }
-

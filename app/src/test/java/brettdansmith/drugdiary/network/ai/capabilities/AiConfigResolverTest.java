@@ -7,7 +7,7 @@ import org.junit.Test;
 
 import brettdansmith.drugdiary.data.settings.AiProvider;
 import brettdansmith.drugdiary.data.settings.ProviderSettings;
-import brettdansmith.drugdiary.model.ai.AiResolvedConfig;
+import brettdansmith.drugdiary.domain.model.ai.AiResolvedConfig;
 
 public class AiConfigResolverTest {
     @Test

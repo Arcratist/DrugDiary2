@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/dashboardFragment"
-        android:icon="@android:drawable/ic_menu_today"
-        android:title="Dashboard" />
-    <item
         android:id="@+id/profileFragment"
         android:icon="@android:drawable/ic_menu_myplaces"
         android:title="Profile" />
     <item
-        android:id="@+id/assistantFragment"
-        android:icon="@android:drawable/ic_menu_help"
-        android:title="Assistant" />
-    <item
         android:id="@+id/diaryFragment"
         android:icon="@android:drawable/ic_menu_edit"
         android:title="Diary" />
+    <item
+        android:id="@+id/assistantFragment"
+        android:icon="@drawable/ic_assistant_custom"
+        android:title="Assistant" />
+    <item
+        android:id="@+id/toolsFragment"
+        android:icon="@android:drawable/ic_menu_manage"
+        android:title="Tools" />
     <item
         android:id="@+id/resourcesFragment"
         android:icon="@android:drawable/ic_menu_info_details"

@@ -22,8 +22,8 @@ public final class OpenAiCompatibleProviderClient implements AiProviderClient {
     }
 
     @Override
-    public void stream(Context context, List<ChatMessage> messages, String profileContextText, AssistantApiClient.StreamCallback callback) throws Exception {
-        AssistantApiClient.streamOpenAiCompatibleResponse(context, messages, profileContextText, callback, apiKey, model, endpointUrl, providerName, attachmentMode);
+    public void stream(Context context, List<ChatMessage> messages, String profileContextText, AssistantApiClient.StreamCallback callback, int timeoutSeconds) throws Exception {
+        AssistantApiClient.streamOpenAiCompatibleResponse(context, messages, profileContextText, callback, apiKey, model, endpointUrl, providerName, attachmentMode, timeoutSeconds);
     }
 }
 

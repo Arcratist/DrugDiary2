@@ -1,6 +1,7 @@
 package brettdansmith.drugdiary.data.settings;
 
 public enum UnitSystem {
+    SYSTEM("system"),
     METRIC("metric"),
     IMPERIAL("imperial");
 
@@ -15,7 +16,17 @@ public enum UnitSystem {
     }
 
     public static UnitSystem fromPreference(String value) {
-        return IMPERIAL.preferenceValue.equals(value) ? IMPERIAL : METRIC;
+        if (SYSTEM.preferenceValue.equals(value)) return SYSTEM;
+        if (IMPERIAL.preferenceValue.equals(value)) return IMPERIAL;
+        return METRIC;
+    }
+    
+    public static UnitSystem getSystemDefault() {
+        String country = java.util.Locale.getDefault().getCountry().toUpperCase();
+        // US, Liberia, Myanmar still officially use Imperial
+        if ("US".equals(country) || "LR".equals(country) || "MM".equals(country)) {
+            return IMPERIAL;
+        }
+        return METRIC;
     }
 }
-

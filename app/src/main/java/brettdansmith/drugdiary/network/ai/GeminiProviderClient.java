@@ -8,8 +8,7 @@ import brettdansmith.drugdiary.ui.assistant.ChatMessage;
 
 public final class GeminiProviderClient implements AiProviderClient {
     @Override
-    public void stream(Context context, List<ChatMessage> messages, String profileContextText, AssistantApiClient.StreamCallback callback) throws Exception {
-        AssistantApiClient.streamGeminiResponse(context, messages, profileContextText, callback);
+    public void stream(Context context, List<ChatMessage> messages, String profileContextText, AssistantApiClient.StreamCallback callback, int timeoutSeconds) throws Exception {
+        AssistantApiClient.streamGeminiResponse(context, messages, profileContextText, callback, timeoutSeconds);
     }
 }
-

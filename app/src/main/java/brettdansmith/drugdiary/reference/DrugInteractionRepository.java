@@ -11,8 +11,8 @@ import java.util.Locale;
 
 import brettdansmith.drugdiary.data.medication.MedicationRepository;
 import brettdansmith.drugdiary.domain.medication.MedicationQueryResolver;
-import brettdansmith.drugdiary.model.interaction.InteractionCheckResult;
-import brettdansmith.drugdiary.model.medication.MedicationRecord;
+import brettdansmith.drugdiary.domain.model.interaction.InteractionCheckResult;
+import brettdansmith.drugdiary.domain.model.medication.MedicationRecord;
 
 public final class DrugInteractionRepository {
     private DrugInteractionRepository() {
@@ -158,4 +158,3 @@ public final class DrugInteractionRepository {
         JSONObject get() throws Exception;
     }
 }
-

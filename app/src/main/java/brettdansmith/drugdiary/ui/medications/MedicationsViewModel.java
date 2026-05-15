@@ -16,8 +16,8 @@ import java.util.concurrent.Executors;
 
 import brettdansmith.drugdiary.R;
 import brettdansmith.drugdiary.data.medication.MedicationRepository;
-import brettdansmith.drugdiary.model.medication.MedicationCategory;
-import brettdansmith.drugdiary.model.medication.MedicationRecord;
+import brettdansmith.drugdiary.domain.model.medication.MedicationCategory;
+import brettdansmith.drugdiary.domain.model.medication.MedicationRecord;
 
 public class MedicationsViewModel extends ViewModel {
 
@@ -140,4 +140,3 @@ public class MedicationsViewModel extends ViewModel {
         executor.shutdownNow();
     }
 }
-

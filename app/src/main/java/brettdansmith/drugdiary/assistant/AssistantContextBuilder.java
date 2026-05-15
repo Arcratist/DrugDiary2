@@ -10,14 +10,15 @@ import java.util.List;
 import brettdansmith.drugdiary.data.diary.DiaryRepository;
 import brettdansmith.drugdiary.data.medication.MedicationRepository;
 import brettdansmith.drugdiary.data.profile.ProfileJson;
+import brettdansmith.drugdiary.data.settings.EffectiveSettings;
 import brettdansmith.drugdiary.data.settings.LanguageOption;
-import brettdansmith.drugdiary.data.settings.SettingsRepository;
 import brettdansmith.drugdiary.data.settings.SettingsState;
 import brettdansmith.drugdiary.domain.units.UnitConverter;
 import brettdansmith.drugdiary.domain.units.UnitPreferences;
-import brettdansmith.drugdiary.model.diary.DiaryEntry;
-import brettdansmith.drugdiary.model.medication.MedicationRecord;
+import brettdansmith.drugdiary.domain.model.diary.DiaryEntry;
+import brettdansmith.drugdiary.domain.model.medication.MedicationRecord;
 import brettdansmith.drugdiary.ui.assistant.ChatMessage;
+import brettdansmith.drugdiary.settings.AppSettings;
 
 public final class AssistantContextBuilder {
     private AssistantContextBuilder() {}
@@ -41,10 +42,13 @@ public final class AssistantContextBuilder {
     }
 
     public static String buildPlainText(Context context, JSONObject vaultData, List<ChatMessage> requestMessages) {
-        SettingsState settings = context == null ? SettingsState.defaults() : new SettingsRepository(context).getState();
-        boolean includeProfile = settings.assistantProfileContext;
-        boolean includeMedications = settings.assistantMedicationContext;
-        boolean includeLogs = settings.assistantLogContext;
+        EffectiveSettings effective = context == null 
+            ? new EffectiveSettings(0, LanguageOption.SYSTEM, brettdansmith.drugdiary.data.settings.UnitSystem.METRIC, false, false) 
+            : AppSettings.effective(context);
+            
+        boolean includeProfile = effective.aiProfileContext;
+        boolean includeMedications = effective.aiMedicationContext;
+        boolean includeLogs = effective.aiLogContext;
 
         JSONObject safeVaultData = vaultData == null ? new JSONObject() : vaultData;
         JSONObject profile = safeVaultData.optJSONObject(ProfileJson.KEY_PROFILE);
@@ -57,14 +61,12 @@ public final class AssistantContextBuilder {
         if (trackers == null) trackers = new JSONObject();
 
         UnitPreferences units = context == null ? new UnitPreferences(brettdansmith.drugdiary.data.settings.UnitSystem.METRIC) : UnitPreferences.from(context);
-        String profileLocation = includeProfile ? profile.optString(ProfileJson.PROFILE_LOCATION, "").trim() : "";
-        boolean privateMode = context != null && new SettingsRepository(context).isPrivateModeEnabled();
+        boolean privateMode = effective.privateMode;
         StringBuilder text = new StringBuilder();
         text.append("DD_CTX v5\n");
-        text.append("settings: lang=").append(languageLabel(settings.language))
-                .append("; units=").append(settings.unitSystem.preferenceValue())
+        text.append("settings: lang=").append(languageLabel(effective.language))
+                .append("; units=").append(effective.unitSystem.preferenceValue())
                 .append("; private_mode=").append(privateMode)
-                .append("; location=").append(profileLocation.isEmpty() ? "not set" : profileLocation)
                 .append("\n");
 
         if (includeProfile) {
@@ -221,4 +223,3 @@ public final class AssistantContextBuilder {
     }
 
 }
-

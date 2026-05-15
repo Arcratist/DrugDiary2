@@ -32,6 +32,7 @@ public final class ProfileJson {
     public static final String KEY_ASSISTANT_CHATS = "assistant_chats";
     public static final String KEY_ASSISTANT_ACTIVE_CHAT_ID = "assistant_active_chat_id";
     public static final String KEY_ASSISTANT_PROFILES = "assistant_profiles";
+    public static final String KEY_USER_SETTINGS = "user_settings";
     public static final String KEY_DRUG_DATABASE_CACHE = "drug_database_cache";
     public static final String KEY_PUBCHEM_CACHE = "pubchem_cache";
 
@@ -43,8 +44,9 @@ public final class ProfileJson {
     public static final String PROFILE_BLOOD_TYPE = "blood_type";
     public static final String PROFILE_LOCATION = "location";
     public static final String PROFILE_BIO = "bio";
-    public static final String PROFILE_AVATAR = "avatar";
-    public static final String PROFILE_AVATAR_URI = "avatar_uri";
+    public static final String PROFILE_AVATAR_TYPE = "avatar_type";
+    public static final String PROFILE_AVATAR_ICON_ID = "avatar_icon_id";
+    public static final String PROFILE_AVATAR_IMAGE_PATH = "avatar_image_path";
 
     private ProfileJson() {
     }
@@ -62,6 +64,9 @@ public final class ProfileJson {
         profile.put(PROFILE_BLOOD_TYPE, "");
         profile.put(PROFILE_LOCATION, "");
         profile.put(PROFILE_BIO, "");
+        profile.put(PROFILE_AVATAR_TYPE, AvatarType.INITIALS.name());
+        profile.put(PROFILE_AVATAR_ICON_ID, "");
+        profile.put(PROFILE_AVATAR_IMAGE_PATH, "");
         root.put(KEY_PROFILE, profile);
 
         JSONObject medical = new JSONObject();
@@ -95,6 +100,7 @@ public final class ProfileJson {
         root.put(KEY_ASSISTANT_CHATS, new JSONArray());
         root.put(KEY_ASSISTANT_ACTIVE_CHAT_ID, "");
         root.put(KEY_ASSISTANT_PROFILES, new JSONArray());
+        root.put(KEY_USER_SETTINGS, new JSONObject());
         return root;
     }
 
@@ -116,4 +122,3 @@ public final class ProfileJson {
         return array;
     }
 }
-

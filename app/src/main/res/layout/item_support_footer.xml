@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="16dp"
+    android:paddingBottom="32dp">
+
+    <!-- Safety Basics Section -->
+    <com.google.android.material.card.MaterialCardView
+        style="@style/Widget.DrugDiary.Card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Safety Basics"
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="• Avoid mixing depressants such as alcohol, opioids, benzodiazepines, GHB/GBL, ketamine, or sedating antihistamines.\n• Avoid using alone, especially with opioids, sedatives, unknown substances, or very high doses.\n• Be cautious with redosing, especially when effects are delayed.\n• Test substances where legal and available.\n• Seek urgent help for chest pain, trouble breathing, seizures, loss of consciousness, blue/grey lips, extreme overheating, severe confusion, or violent agitation.\n• Severe withdrawal from alcohol, benzodiazepines, GHB/GBL, or heavy opioid use can require medical support.\n• Keep naloxone available where relevant and legal.\n• If unsure whether symptoms are serious, treat it as serious and seek help early."
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Footer -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Resource details can change. If someone is in immediate danger, may be overdosing, or has severe symptoms, call emergency services. This app provides information and signposting only and is not medical, crisis, or emergency care."
+        android:textAlignment="center"
+        android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+        android:textColor="?attr/colorOnSurfaceVariant" />
+
+</LinearLayout>

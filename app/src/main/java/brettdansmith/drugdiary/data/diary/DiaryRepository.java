@@ -11,7 +11,7 @@ import java.util.List;
 
 import brettdansmith.drugdiary.data.profile.EncryptedProfileStore;
 import brettdansmith.drugdiary.data.profile.ProfileJson;
-import brettdansmith.drugdiary.model.diary.DiaryEntry;
+import brettdansmith.drugdiary.domain.model.diary.DiaryEntry;
 
 public final class DiaryRepository {
     private final Context appContext;
@@ -53,4 +53,3 @@ public final class DiaryRepository {
         EncryptedProfileStore.saveProfileData(appContext, data);
     }
 }
-

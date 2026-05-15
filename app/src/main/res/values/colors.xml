@@ -1,48 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Premium Light Mode Palette -->
-    <color name="light_bg_primary">#F7F8FA</color>
-    <color name="light_bg_secondary">#EEF2F3</color>
-    <color name="light_surface">#FFFFFF</color>
-
-    <color name="light_text_primary">#1D232A</color>
-    <color name="light_text_secondary">#59636E</color>
-    <color name="light_text_muted">#88919B</color>
-
-    <color name="light_accent_primary">#236C6A</color>
-    <color name="light_accent_secondary">#5E6B7A</color>
-    <color name="light_accent_highlight">#B06B3B</color>
-
-    <color name="light_success">#4F8F68</color>
-    <color name="light_warning">#C89A48</color>
-    <color name="light_error">#CC6666</color>
-
-    <color name="light_border">#D8DEE6</color>
-    <color name="light_selected">#DDEBE8</color>
-    <color name="light_pressed">#D3E0DD</color>
-
-    <!-- Premium Dark Mode Palette -->
-    <color name="dark_bg_primary">#111615</color>
-    <color name="dark_bg_secondary">#17201F</color>
-    <color name="dark_surface">#1D2826</color>
-
-    <color name="dark_text_primary">#ECEFF4</color>
-    <color name="dark_text_secondary">#A7B0BA</color>
-    <color name="dark_text_muted">#7D8792</color>
-
-    <color name="dark_accent_primary">#7BC8BF</color>
-    <color name="dark_accent_secondary">#A8B2BD</color>
-    <color name="dark_accent_highlight">#E0A36F</color>
-
-    <color name="dark_success">#5FA777</color>
-    <color name="dark_warning">#D1A95A</color>
-    <color name="dark_error">#D96C6C</color>
-
-    <color name="dark_border">#2C3A37</color>
-    <color name="dark_selected">#253C38</color>
-    <color name="dark_pressed">#304A45</color>
-
-    <!-- Shared/Legacy Colors -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- App-specific palette -->
+    <color name="brand_purple">#673AB7</color>
+    <color name="brand_purple_alpha">#80673AB7</color>
+    <color name="light_error">#EF5350</color>
+    <color name="pure_red">#FF0000</color>
+    <color name="pure_white">#FFFFFF</color>
+    <color name="delete_magenta">#C51162</color>
+
+    <!-- Light Theme -->
+    <color name="light_accent_primary">#673AB7</color>
+    <color name="light_accent_secondary">#512DA8</color>
+    <color name="light_accent_highlight">#B39DDB</color>
+    <color name="light_selected">#EDE7F6</color>
+    <color name="light_text_primary">#212121</color>
+    <color name="light_text_secondary">#757575</color>
+    <color name="light_bg_primary">#FFFFFF</color>
+    <color name="light_surface">#F5F5F5</color>
+    <color name="light_border">#E0E0E0</color>
+    <color name="pin_button_light">#40673AB7</color>
+
+    <!-- Dark Theme Colors -->
+    <color name="dark_accent_primary">#9575CD</color>
+    <color name="dark_accent_secondary">#7E57C2</color>
+    <color name="dark_accent_highlight">#673AB7</color>
+    <color name="dark_selected">#3A315C</color>
+    <color name="dark_pressed">#4A416D</color>
+    <color name="dark_text_primary">#FFFFFF</color>
+    <color name="dark_text_secondary">#B0BEC5</color>
+    <color name="dark_bg_primary">#121212</color>
+    <color name="dark_surface">#212121</color>
+    <color name="dark_border">#424242</color>
+    <color name="dark_error">#CF6679</color>
+    <color name="pin_button_dark">#409575CD</color>
 </resources>
