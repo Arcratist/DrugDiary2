@@ -19,14 +19,15 @@ import brettdansmith.drugdiary.data.medication.MedicationRepository;
 import brettdansmith.drugdiary.databinding.FragmentMedicationListBinding;
 import brettdansmith.drugdiary.domain.model.medication.MedicationDoseLog;
 import brettdansmith.drugdiary.domain.model.medication.MedicationRecord;
-import brettdansmith.drugdiary.ui.assistant.AssistantViewModel;
+import brettdansmith.drugdiary.ui.assistant.AssistantIntegration;
+import brettdansmith.drugdiary.ui.common.ViewModelFactory;
 
 public class MedicationListFragment extends Fragment {
 
     private static final String ARG_FILTER_MODE = "filter_mode";
 
     private FragmentMedicationListBinding binding;
-    private MedicationsViewModel viewModel;
+    private MedicationListViewModel viewModel;
     private MedicationAdapter adapter;
     private String filterMode;
 
@@ -57,7 +58,8 @@ public class MedicationListFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        viewModel = new ViewModelProvider(requireActivity()).get(MedicationsViewModel.class);
+        viewModel = new ViewModelProvider(requireActivity(), new ViewModelFactory(requireContext()))
+                .get(MedicationListViewModel.class);
 
         setupRecyclerView();
 
@@ -79,12 +81,10 @@ public class MedicationListFragment extends Fragment {
 
             @Override
             public void onAskAssistant(String medicationName) {
-                AssistantViewModel assistantViewModel = new ViewModelProvider(requireActivity()).get(AssistantViewModel.class);
-                assistantViewModel.requestOpenChat(null);
-                assistantViewModel.setInitialPrompt("/drugdata " + medicationName);
-
-                NavHostFragment.findNavController(MedicationListFragment.this)
-                        .navigate(R.id.assistantFragment);
+                String prompt = "Medication context request: /drugdata " + medicationName
+                        + "\nPlease summarize key safety points, interactions, common adverse effects, and practical monitoring steps."
+                        + "\nKeep this as harm-minimisation guidance, not diagnosis.";
+                AssistantIntegration.askAboutPrefill(MedicationListFragment.this, prompt, false);
             }
 
             @Override

@@ -81,7 +81,6 @@ public final class ProfileJson {
         privacy.put("share_biometrics", false);
         privacy.put("share_meds", false);
         privacy.put("share_logs", false);
-        privacy.put("show_on_dashboard", true);
         root.put(KEY_PRIVACY, privacy);
 
         JSONObject trackers = new JSONObject();

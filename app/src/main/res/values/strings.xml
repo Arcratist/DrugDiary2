@@ -2,7 +2,6 @@
     <string name="app_name">DrugDiary</string>
     <string name="action_settings">Settings</string>
     <!-- Strings used for fragments for navigation -->
-    <string name="first_fragment_label">Dashboard</string>
     <string name="second_fragment_label">Second Fragment</string>
     <string name="profile_fragment_label">Profile Selection</string>
     <string name="next">Next</string>
@@ -74,6 +73,8 @@
     <string name="assistant_web_search">Allow live web search when provider supports it</string>
     <string name="assistant_require_citations">Require citations/source metadata when available</string>
     <string name="assistant_fallback">Enable provider fallback routing</string>
+    <string name="assistant_entry_share">Assistant entry from Share</string>
+    <string name="assistant_entry_text_selection">Assistant entry from selected text</string>
     <string name="provider_configuration">%1$s settings</string>
     <string name="provider_base_url">Custom base URL (optional)</string>
     <string name="provider_enabled">Enable this provider</string>
@@ -98,12 +99,11 @@
     <string name="weight_kg">Weight (kg)</string>
     <string name="security_pin_6">Security PIN (6 digits) *</string>
     <string name="security_pin_4_or_6">Security PIN (4 or 6 digits) *</string>
-    <string name="dashboard_greeting">Welcome Back, %1$s!</string>
-    <string name="dashboard_vitals">Age: %1$s | Weight: %2$s | Height: %3$s</string>
+
     <string name="no_logs_yet">No logs yet</string>
     <string name="diary_summary">Entries: %1$d\nLast: %2$s</string>
     <string name="profile_info_title">Build a useful profile</string>
-    <string name="profile_info_body">Only a name and PIN are required here. Add accurate age, sex, height, weight, and context now if you want better dashboard summaries and AI context later. More detailed information, including blood type, allergies, conditions, active medications, substance use, emergency notes, and privacy controls can be added from the Profile screen after setup.</string>
+    <string name="profile_info_body">Only a name and PIN are required here. Add accurate age, sex, height, weight, and context now if you want better AI context later. More detailed information, including blood type, allergies, conditions, active medications, substance use, emergency notes, and privacy controls can be added from the Profile screen after setup.</string>
     <string name="dont_show_this_again">Don\'t show this again</string>
     <string name="assistant_message_hint">Message Assistant...</string>
     <string name="attach_file">Attach file</string>
@@ -388,9 +388,7 @@
     <string name="comforting_instructions_ai">Comforting Instructions for AI</string>
     <string name="medications_list">Medications List</string>
     <string name="ai_privacy_visibility">AI Privacy &amp; Visibility</string>
-    <string name="show_summary_dashboard">Show summary on dashboard</string>
     <string name="private_mode">Private mode (reduce sensitive UI exposure)</string>
-    <string name="hide_dashboard_sensitive">Hide medication and diary detail cards on dashboard</string>
     <string name="profile_security">Profile Security</string>
     <string name="change_pin">Change PIN</string>
     <string name="delete_profile">Delete Profile</string>
@@ -454,9 +452,6 @@
     <string name="additional_command_image_result">Additional command image result</string>
     <string name="received_message">Received message</string>
     <string name="sent_message">Sent message</string>
-    <string name="dashboard_vitals_placeholder">Age: -- | Weight: --kg</string>
-    <string name="dashboard_medication_summary">Active meds: %1$d • PRN: %2$d • Favourites: %3$d</string>
-    <string name="dashboard_private_mode_summary">Private mode enabled: sensitive dashboard details are hidden.</string>
     <string name="diary_entry_notes">Notes</string>
     <string name="diary_save_failed_title">Could not save diary entry</string>
     <string name="diary_save_failed_body">The encrypted profile vault could not be updated.</string>
@@ -506,4 +501,8 @@
     <string name="settings_fallback_order">Fallback order: %1$s</string>
     <string name="settings_attachments_supported">Attachments supported: %1$b</string>
     <string name="settings_usage_metadata_supported">Usage metadata support: %1$b</string>
+    <string name="assistant_title">Assistant</string>
+    <string name="assistant_empty_prompt">What can I help with?</string>
+    <string name="assistant_history_label">History</string>
+    <string name="settings">Settings</string>
 </resources>

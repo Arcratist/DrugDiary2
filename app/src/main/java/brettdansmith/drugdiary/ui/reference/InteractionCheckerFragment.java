@@ -7,23 +7,24 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import brettdansmith.drugdiary.databinding.FragmentInteractionCheckerBinding;
 import brettdansmith.drugdiary.domain.medication.MedicationQueryResolver;
 import brettdansmith.drugdiary.reference.DrugInteractionRepository;
+import brettdansmith.drugdiary.ui.common.ViewModelFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class InteractionCheckerFragment extends Fragment {
     private FragmentInteractionCheckerBinding binding;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private InteractionCheckerViewModel viewModel;
 
     private static final String[] SUBSTANCE_GROUPS = {
             "Alcohol",
@@ -48,6 +49,12 @@ public class InteractionCheckerFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        viewModel = new ViewModelProvider(this, new ViewModelFactory(requireContext()))
+                .get(InteractionCheckerViewModel.class);
+
+        observeViewModel();
+
         List<String> suggestions = new ArrayList<>();
         for (String group : SUBSTANCE_GROUPS) addUnique(suggestions, group);
         for (String value : MedicationQueryResolver.suggestionsFor(requireContext().getApplicationContext())) addUnique(suggestions, value);
@@ -59,6 +66,30 @@ public class InteractionCheckerFragment extends Fragment {
         binding.buttonCheckInteraction.setOnClickListener(v -> checkInteraction());
     }
 
+    private void observeViewModel() {
+        viewModel.getAnalysis().observe(getViewLifecycleOwner(), analysis -> {
+            if (analysis != null) {
+                binding.textInteractionResult.setText(analysis);
+            }
+        });
+
+        viewModel.getResult().observe(getViewLifecycleOwner(), result -> {
+            if (result != null) {
+                binding.textInteractionResult.setText(result.toString());
+            }
+        });
+
+        viewModel.getError().observe(getViewLifecycleOwner(), error -> {
+            if (error != null && !error.isEmpty()) {
+                Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        viewModel.getLoading().observe(getViewLifecycleOwner(), isLoading -> {
+            // Could show/hide loading indicator here if needed
+        });
+    }
+
     private void checkInteraction() {
         List<String> entries = interactionEntries();
         if (entries.size() < 2) {
@@ -67,20 +98,7 @@ public class InteractionCheckerFragment extends Fragment {
         }
 
         binding.textInteractionResult.setText("Checking " + entries.size() + " entries against local rules and public reference APIs...");
-        executor.execute(() -> {
-            String output;
-            try {
-                output = DrugInteractionRepository.checkMultiple(requireContext().getApplicationContext(), entries.toArray(new String[0]));
-            } catch (Exception e) {
-                output = "Public database interaction check failed.\n\n" + e.getMessage();
-            }
-            String finalOutput = output;
-            if (getActivity() != null) {
-                requireActivity().runOnUiThread(() -> {
-                    if (binding != null) binding.textInteractionResult.setText(finalOutput);
-                });
-            }
-        });
+        viewModel.checkMultipleInteractions(entries.toArray(new String[0]));
     }
 
     private List<String> interactionEntries() {
@@ -115,12 +133,6 @@ public class InteractionCheckerFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        executor.shutdownNow();
     }
 }
 

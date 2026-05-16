@@ -37,6 +37,8 @@ import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
+import androidx.navigation.NavOptions;
+import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.NavigationUI;
 import androidx.navigation.ui.AppBarConfiguration;
 
@@ -46,9 +48,14 @@ import brettdansmith.drugdiary.data.profile.ProfileAvatar;
 import brettdansmith.drugdiary.data.profile.ProfileAvatarDataStore;
 import brettdansmith.drugdiary.data.settings.SettingsRepository;
 import brettdansmith.drugdiary.ui.assistant.AssistantNotificationController;
+import brettdansmith.drugdiary.ui.assistant.AssistantExternalIntentParser;
+import brettdansmith.drugdiary.ui.assistant.AssistantIntegration;
+import brettdansmith.drugdiary.ui.assistant.NotificationRegistry;
 import brettdansmith.drugdiary.ui.assistant.AssistantViewModel;
 import brettdansmith.drugdiary.ui.auth.ProfileSelectorFragment;
 import brettdansmith.drugdiary.ui.avatar.AvatarNavIconFactory;
+import brettdansmith.drugdiary.ui.common.ViewModelFactory;
+import brettdansmith.drugdiary.ui.profile.ProfileFragment;
 import brettdansmith.drugdiary.settings.AppSettings;
 import brettdansmith.drugdiary.databinding.ActivityMainBinding;
 
@@ -57,6 +64,9 @@ import brettdansmith.drugdiary.R;
 public class MainActivity extends AppCompatActivity {
     public static final String ACTION_OPEN_ASSISTANT_CHAT = "brettdansmith.drugdiary.OPEN_ASSISTANT_CHAT";
     public static final String EXTRA_ASSISTANT_CHAT_ID = "assistant_chat_id";
+    public static final String ACTION_OPEN_ASSISTANT_COMPOSER = "brettdansmith.drugdiary.OPEN_ASSISTANT_COMPOSER";
+
+    private String pendingAssistantPrompt = "";
 
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
@@ -70,9 +80,11 @@ public class MainActivity extends AppCompatActivity {
     public static final String PREF_THEME = AppSettings.PREF_THEME;
     private static boolean welcomeCheckedThisProcess = false;
 
-    private int backPressCount = 0;
-    private final Handler backPressHandler = new Handler(Looper.getMainLooper());
-    private final Runnable backPressResetRunnable = () -> backPressCount = 0;
+    private static final int PANIC_BACK_PRESS_THRESHOLD = 3;
+    private static final long PANIC_BACK_PRESS_WINDOW_MS = 1800L;
+    private int panicBackPressCount = 0;
+    private int panicBackDestinationId = 0;
+    private long panicBackLastPressedAt = 0L;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +96,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         setSupportActionBar(binding.toolbar);
+        NotificationRegistry.ensureAllChannels(getApplicationContext());
 
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
         setupBottomNavigation(navController);
@@ -104,13 +117,14 @@ public class MainActivity extends AppCompatActivity {
 
             binding.appBar.setVisibility(View.GONE);
 
-            if (isAuthScreen) {
+                if (isAuthScreen) {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
                 binding.bottomNav.setVisibility(View.GONE);
             } else {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
                 if (!isLoggedIn) {
-                    controller.navigate(R.id.ProfileSelectorFragment);
+                    safeNavigateToProfileSelector(controller);
+                    return;
                 }
                 binding.bottomNav.setVisibility(isLoggedIn ? View.VISIBLE : View.GONE);
                 if (isLoggedIn) {
@@ -132,31 +146,14 @@ public class MainActivity extends AppCompatActivity {
                 int destId = controller.getCurrentDestination().getId();
 
                 if (destId == R.id.profileFragment || destId == R.id.ProfileSelectorFragment) {
-                    backPressCount++;
-                    backPressHandler.removeCallbacks(backPressResetRunnable);
-                    if (panicToast != null) panicToast.cancel();
-
-                    String action = (destId == R.id.ProfileSelectorFragment) ? "Exit" : "Panic logout";
-                    int remaining = 3 - backPressCount;
-
-                    if (remaining > 0) {
-                        panicToast = Toast.makeText(MainActivity.this, action + " in " + remaining + "...", Toast.LENGTH_SHORT);
-                        panicToast.show();
-                        backPressHandler.postDelayed(backPressResetRunnable, 1500);
-                    } else {
-                        if (destId == R.id.ProfileSelectorFragment) {
-                            finish();
-                        } else {
-                            logout();
-                        }
-                    }
-                } else if (appBarConfiguration.getTopLevelDestinations().contains(destId)) {
-                    controller.navigate(R.id.profileFragment);
+                    handlePanicBackPress(destId);
                 } else {
+                    resetPanicBackState();
                     if (!controller.popBackStack()) {
                         controller.navigate(R.id.profileFragment);
                     }
                 }
+                maybeOpenPendingAssistant(controller);
             }
         });
 
@@ -221,15 +218,69 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void handleAssistantIntent(android.content.Intent intent, NavController navController) {
-        if (intent == null || !ACTION_OPEN_ASSISTANT_CHAT.equals(intent.getAction())) return;
-        AssistantViewModel model = new ViewModelProvider(this).get(AssistantViewModel.class);
+        if (intent == null) return;
+        if (ACTION_OPEN_ASSISTANT_CHAT.equals(intent.getAction())) {
+            AssistantViewModel model = new ViewModelProvider(this, new ViewModelFactory(this))
+                    .get(AssistantViewModel.class);
+            model.setApplicationContext(getApplicationContext());
+            model.requestOpenChat(intent.getStringExtra(EXTRA_ASSISTANT_CHAT_ID));
+            if (UserSession.getInstance().isActive()
+                    && navController.getCurrentDestination() != null
+                    && navController.getCurrentDestination().getId() != R.id.assistantFragment) {
+                navController.navigate(R.id.assistantFragment);
+            }
+            return;
+        }
+        maybeHandleExternalAssistantIntent(intent, navController);
+    }
+
+    private void maybeHandleExternalAssistantIntent(android.content.Intent intent, NavController navController) {
+        brettdansmith.drugdiary.data.settings.SettingsState settings = new SettingsRepository(getApplicationContext()).getState();
+        String action = intent.getAction();
+        if ((android.content.Intent.ACTION_SEND.equals(action) || android.content.Intent.ACTION_SEND_MULTIPLE.equals(action))
+                && !settings.assistantEntryFromShareEnabled) return;
+        if (android.content.Intent.ACTION_PROCESS_TEXT.equals(action) && !settings.assistantEntryFromTextSelectionEnabled) return;
+
+        AssistantExternalIntentParser.ParsedRequest parsed = AssistantExternalIntentParser.parse(intent);
+        if (parsed == null || parsed.prompt.isEmpty()) return;
+
+        AssistantViewModel model = new ViewModelProvider(this, new ViewModelFactory(this))
+                .get(AssistantViewModel.class);
         model.setApplicationContext(getApplicationContext());
         model.requestOpenChat(intent.getStringExtra(EXTRA_ASSISTANT_CHAT_ID));
-        if (UserSession.getInstance().isActive()
-                && navController.getCurrentDestination() != null
-                && navController.getCurrentDestination().getId() != R.id.assistantFragment) {
-            navController.navigate(R.id.assistantFragment);
+        model.setInitialPrompt(parsed.prompt);
+        pendingAssistantPrompt = parsed.prompt;
+        if (UserSession.getInstance().isActive()) {
+            maybeOpenPendingAssistant(navController);
         }
+    }
+
+    private void maybeOpenPendingAssistant(NavController navController) {
+        if (!UserSession.getInstance().isActive()) return;
+        if (pendingAssistantPrompt == null || pendingAssistantPrompt.trim().isEmpty()) return;
+        // Avoid placing potentially large prompt text into the navigation bundle (can trigger
+        // TransactionTooLargeException on some devices / large shared content). The prompt has
+        // already been set on the AssistantViewModel via model.setInitialPrompt(parsed.prompt), so
+        // navigate with only the auto-send flag and let the fragment consume the prompt from the
+        // view model instead of the navigation arguments.
+        Bundle args = new Bundle();
+        args.putBoolean(AssistantIntegration.ARG_AUTO_SEND_PROMPT, true);
+        if (navController.getCurrentDestination() == null
+                || navController.getCurrentDestination().getId() != R.id.assistantFragment) {
+            navController.navigate(R.id.assistantFragment, args);
+        }
+
+    }
+
+    /**
+     * Called by the assistant fragment to consume a prompt that originated from an external
+     * intent (share/process-text). We keep it on the activity rather than passing it through
+     * the navigation bundle to avoid TransactionTooLargeException for large shared content.
+     */
+    public String consumePendingAssistantPrompt() {
+        String p = pendingAssistantPrompt == null ? "" : pendingAssistantPrompt;
+        pendingAssistantPrompt = "";
+        return p;
     }
 
     @Override
@@ -257,14 +308,96 @@ public class MainActivity extends AppCompatActivity {
 
     public void logout() {
         UserSession.getInstance().endSession();
-        backPressCount = 0;
-        new ViewModelProvider(this).get(AssistantViewModel.class).clear();
+        resetPanicBackState();
 
         // Return to global theme
         AppCompatDelegate.setDefaultNightMode(AppSettings.getTheme(this));
 
-        Navigation.findNavController(this, R.id.nav_host_fragment_content_main)
-                .navigate(R.id.ProfileSelectorFragment);
+        try {
+            NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
+            safeNavigateToProfileSelector(navController);
+        } catch (IllegalStateException | IllegalArgumentException ignored) {
+            // Keep activity alive; destination listener will redirect once nav host is ready.
+        }
+    }
+
+    private void handlePanicBackPress(int destinationId) {
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (panicBackDestinationId != destinationId || now - panicBackLastPressedAt > PANIC_BACK_PRESS_WINDOW_MS) {
+            panicBackPressCount = 0;
+        }
+
+        panicBackDestinationId = destinationId;
+        panicBackLastPressedAt = now;
+        panicBackPressCount++;
+        if (panicToast != null) panicToast.cancel();
+
+        int remaining = PANIC_BACK_PRESS_THRESHOLD - panicBackPressCount;
+        if (remaining > 0) {
+            int messageRes = destinationId == R.id.ProfileSelectorFragment
+                    ? R.string.exit_toast
+                    : R.string.panic_logout_toast;
+            panicToast = Toast.makeText(this, getString(messageRes, remaining), Toast.LENGTH_SHORT);
+            panicToast.show();
+            return;
+        }
+
+        resetPanicBackState();
+        if (destinationId == R.id.ProfileSelectorFragment) {
+            finish();
+        } else {
+            requestProfileSaveThenLogout();
+        }
+    }
+
+    private void resetPanicBackState() {
+        panicBackPressCount = 0;
+        panicBackDestinationId = 0;
+        panicBackLastPressedAt = 0L;
+        if (panicToast != null) {
+            panicToast.cancel();
+            panicToast = null;
+        }
+    }
+
+    private void safeNavigateToProfileSelector(@NonNull NavController navController) {
+        if (navController.getCurrentDestination() != null
+                && navController.getCurrentDestination().getId() == R.id.ProfileSelectorFragment) {
+            return;
+        }
+        try {
+            boolean popped = navController.popBackStack(R.id.ProfileSelectorFragment, false);
+            if (!popped || navController.getCurrentDestination() == null
+                    || navController.getCurrentDestination().getId() != R.id.ProfileSelectorFragment) {
+                navController.navigate(R.id.ProfileSelectorFragment);
+            }
+        } catch (IllegalArgumentException | IllegalStateException ignored) {
+            try {
+                NavOptions navOptions = new NavOptions.Builder()
+                        .setPopUpTo(R.id.nav_graph, true)
+                        .build();
+                navController.navigate(R.id.ProfileSelectorFragment, null, navOptions);
+            } catch (IllegalArgumentException | IllegalStateException ignoredAgain) {
+                // Ignore final fallback failure to avoid app crash during shutdown paths.
+            }
+        }
+    }
+
+    private void requestProfileSaveThenLogout() {
+        NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.nav_host_fragment_content_main);
+        if (navHostFragment == null) {
+            logout();
+            return;
+        }
+        androidx.fragment.app.Fragment activeFragment = navHostFragment
+                .getChildFragmentManager()
+                .getPrimaryNavigationFragment();
+        if (activeFragment instanceof ProfileFragment) {
+            ((ProfileFragment) activeFragment).requestSaveThenLogout();
+            return;
+        }
+        logout();
     }
 
     public void showSettingsMenu(View anchor, NavController navController) {

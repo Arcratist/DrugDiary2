@@ -9,6 +9,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.LinearLayout;
+import androidx.appcompat.widget.AppCompatTextView;
+import androidx.core.content.ContextCompat;
+import android.view.inputmethod.InputMethodManager;
+import com.google.android.material.textfield.TextInputEditText;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
@@ -20,7 +25,6 @@ import android.text.method.LinkMovementMethod;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ClickableSpan;
 import android.text.style.RelativeSizeSpan;
-import android.text.style.StrikethroughSpan;
 import android.text.style.StyleSpan;
 import android.text.style.TypefaceSpan;
 import android.text.style.URLSpan;
@@ -37,7 +41,9 @@ import java.io.ByteArrayOutputStream;
 import java.net.URL;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
@@ -56,9 +62,12 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("!@([a-zA-Z0-9_]+):([^\\s|,;]+)");
     private static final ExecutorService IMAGE_EXECUTOR = Executors.newFixedThreadPool(3);
 
-    private List<ChatMessage> messages;
+    private List<ChatMessage> messages = new ArrayList<>();
     private OnCommandClickListener commandListener;
     private OnMessageActionListener messageActionListener;
+    private boolean isStreaming = false;
+    private String editingMessageId = "";
+    private final Map<String, List<ChatMessage.Attachment>> editingAttachments = new HashMap<>();
 
     public interface OnCommandClickListener {
         void onCommandClick(String command);
@@ -68,6 +77,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
         void onEdit(ChatMessage message);
         void onDelete(ChatMessage message);
         void onImageClick(String base64);
+        void onInlineEditBranch(ChatMessage message, String updatedText, List<ChatMessage.Attachment> attachments);
+        void onInlineEditPrivateBranch(ChatMessage message, String updatedText, List<ChatMessage.Attachment> attachments);
+        void onInlineEditUpdate(ChatMessage message, String updatedText, List<ChatMessage.Attachment> attachments);
     }
 
     public ChatAdapter(List<ChatMessage> messages) {
@@ -77,24 +89,15 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
 
     public void submitMessages(List<ChatMessage> newMessages) {
         List<ChatMessage> nextMessages = newMessages == null ? new ArrayList<>() : new ArrayList<>(newMessages);
-        String previousLastUserId = lastUserMessageId(this.messages);
         DiffUtil.DiffResult diff = DiffUtil.calculateDiff(new ChatDiffCallback(this.messages, nextMessages), false);
         this.messages = nextMessages;
         diff.dispatchUpdatesTo(this);
-        String nextLastUserId = lastUserMessageId(this.messages);
-        if (!stringEquals(previousLastUserId, nextLastUserId)) {
-            notifyMessageChanged(previousLastUserId);
-            notifyMessageChanged(nextLastUserId);
-        }
     }
-    
-    public void updateLastMessage(ChatMessage message) {
-        if (messages.isEmpty()) {
-            messages.add(message);
-            notifyItemInserted(0);
-        } else {
-            messages.set(messages.size() - 1, message);
-            notifyItemChanged(messages.size() - 1, "text_only");
+
+    public void setStreaming(boolean streaming) {
+        this.isStreaming = streaming;
+        if (!messages.isEmpty()) {
+            notifyItemChanged(messages.size() - 1);
         }
     }
 
@@ -106,90 +109,66 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
         this.messageActionListener = listener;
     }
 
+    public void setEditingMessageId(String messageId) {
+        if (messageId == null || messageId.isEmpty()) {
+            editingAttachments.clear();
+        } else if (!messageId.equals(this.editingMessageId)) {
+            editingAttachments.remove(this.editingMessageId);
+        }
+        this.editingMessageId = messageId == null ? "" : messageId;
+        notifyDataSetChanged();
+    }
+
+    public boolean cancelEditingIfActive() {
+        if (editingMessageId == null || editingMessageId.isEmpty()) return false;
+        editingMessageId = "";
+        editingAttachments.clear();
+        notifyDataSetChanged();
+        return true;
+    }
+
     @NonNull
     @Override
     public ChatViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_chat_message, parent, false);
         return new ChatViewHolder(view);
     }
-    
-    @Override
-    public void onBindViewHolder(@NonNull ChatViewHolder holder, int position, @NonNull List<Object> payloads) {
-        if (payloads.contains("text_only")) {
-            bindMessageData(holder, position, true);
-        } else {
-            super.onBindViewHolder(holder, position, payloads);
-        }
-    }
 
     @Override
     public void onBindViewHolder(@NonNull ChatViewHolder holder, int position) {
-        bindMessageData(holder, position, false);
-    }
-
-    private void bindMessageData(ChatViewHolder holder, int position, boolean isTextOnlyUpdate) {
         ChatMessage message = messages.get(position);
         Context context = holder.itemView.getContext();
-        String expandedContent = message.getContent() == null ? "" : message.getContent();
+        String content = message.getContent() == null ? "" : message.getContent();
 
-        if (!isTextOnlyUpdate) {
-            holder.layoutSent.setVisibility(View.GONE);
-            holder.layoutReceived.setVisibility(View.GONE);
-            holder.layoutCommand.setVisibility(View.GONE);
-            holder.layoutSystem.setVisibility(View.GONE);
-            holder.layoutMessageActions.setVisibility(View.GONE);
-            bindAttachmentPreview(holder, message);
-        }
+        holder.layoutSent.setVisibility(View.GONE);
+        holder.layoutReceived.setVisibility(View.GONE);
+        holder.layoutCommand.setVisibility(View.GONE);
+        holder.layoutSystem.setVisibility(View.GONE);
+        holder.layoutMessageActions.setVisibility(View.GONE);
 
-        if (expandedContent.startsWith(COMMAND_PREFIX)) {
+        bindAttachmentPreview(holder, message);
+
+        if (content.startsWith(COMMAND_PREFIX)) {
             holder.layoutCommand.setVisibility(View.VISIBLE);
-            String cmdText = expandedContent.substring(COMMAND_PREFIX.length()).trim();
-            if (isTextOnlyUpdate) {
-                holder.textCommand.setText(formatRichText(cmdText, context, false, true, true));
-                setupTextViewForLinks(holder.textCommand);
-            } else {
-                bindTextAndImage(holder.textCommand, holder.imageCommand, holder.imageCommandSecondary, cmdText, false, true);
-            }
-            
-            if (cmdText.contains("failed") || cmdText.contains("error") || cmdText.contains("Error")) {
-                holder.cardCommand.setCardBackgroundColor(com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorErrorContainer, android.graphics.Color.RED));
-                holder.textCommand.setTextColor(com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnErrorContainer, android.graphics.Color.WHITE));
-            } else {
-                holder.cardCommand.setCardBackgroundColor(com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorPrimaryContainer, android.graphics.Color.GRAY));
-                holder.textCommand.setTextColor(com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnPrimaryContainer, android.graphics.Color.BLACK));
-            }
-        } else if (expandedContent.startsWith(SYSTEM_PREFIX)) {
+            String cmdText = content.substring(COMMAND_PREFIX.length()).trim();
+            holder.textCommand.setText(cmdText);
+        } else if (content.startsWith(SYSTEM_PREFIX)) {
             holder.layoutSystem.setVisibility(View.VISIBLE);
-            String sysText = expandedContent.substring(SYSTEM_PREFIX.length()).trim();
+            String sysText = content.substring(SYSTEM_PREFIX.length()).trim();
             holder.textSystem.setText(sysText);
-            setupTextViewForLinks(holder.textSystem);
-            
-            if (sysText.contains("Error") || sysText.contains("failed")) {
-                holder.cardSystem.setCardBackgroundColor(com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorErrorContainer, android.graphics.Color.RED));
-                holder.textSystem.setTextColor(com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnErrorContainer, android.graphics.Color.WHITE));
-            } else {
-                holder.cardSystem.setCardBackgroundColor(com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorSecondaryContainer, android.graphics.Color.LTGRAY));
-                holder.textSystem.setTextColor(com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSecondaryContainer, android.graphics.Color.BLACK));
-            }
         } else if (message.isSent()) {
             holder.layoutSent.setVisibility(View.VISIBLE);
-            holder.textSent.setText(formatRichText(expandedContent, context, true, false, true));
-            setupTextViewForLinks(holder.textSent);
-            if (!isTextOnlyUpdate) {
-                bindMessageActions(holder, message, isLastUserMessage(position));
-            }
+            bindInlineEditor(holder, message, content, context);
+            bindMessageActions(holder, message, isLastUserMessage(position));
         } else {
             holder.layoutReceived.setVisibility(View.VISIBLE);
-            holder.cardReceived.setCardBackgroundColor(com.google.android.material.color.MaterialColors.getColor(context, android.R.attr.windowBackground, android.graphics.Color.WHITE));
-            holder.cardReceived.setStrokeWidth(0);
-            holder.textReceived.setTextColor(com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSurface, android.graphics.Color.BLACK));
-            
-            if (isTextOnlyUpdate) {
-                holder.textReceived.setText(formatRichText(stripImageMarker(expandedContent).trim(), context, false, false, true));
-                setupTextViewForLinks(holder.textReceived);
-            } else {
-                bindTextAndImage(holder.textReceived, holder.imageReceived, holder.imageReceivedSecondary, expandedContent, false, false);
+            String visibleText = stripImageMarker(content).trim();
+            if (isStreaming && position == messages.size() - 1) {
+                visibleText += " █";
             }
+            holder.textReceived.setText(formatRichText(visibleText, context, false, false, true));
+            setupTextViewForLinks(holder.textReceived);
+            bindEmbeddedImages(holder, content);
         }
     }
 
@@ -217,10 +196,16 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
         View layoutSent, layoutReceived, layoutCommand, layoutSystem;
         View layoutMessageActions;
         TextView textSent, textReceived, textCommand, textSystem;
-        TextView textSentAttachment, textReceivedAttachment;
-        ImageView imageReceived, imageReceivedSecondary, imageCommand, imageCommandSecondary, imageSentAttachment;
-        MaterialCardView cardReceived, cardCommand, cardSystem;
+        TextView textReceivedAttachment;
+        View layoutInlineEdit;
+        LinearLayout layoutInlineEditAttachments;
+        TextInputEditText editInlineMessage;
+        TextView textEditHelper;
+        ImageView imageSentAttachment;
+        LinearLayout layoutReceivedImages, layoutSentAttachments;
+        MaterialCardView cardSent, cardCommand, cardSystem;
         MaterialButton buttonEdit, buttonDelete;
+        MaterialButton buttonInlineCancel, buttonInlineUpdate, buttonInlineBranch;
 
         ChatViewHolder(View itemView) {
             super(itemView);
@@ -231,83 +216,191 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
             layoutMessageActions = itemView.findViewById(R.id.layout_message_actions);
             
             textSent = itemView.findViewById(R.id.text_sent);
+            layoutInlineEdit = itemView.findViewById(R.id.layout_inline_edit);
+            layoutInlineEditAttachments = itemView.findViewById(R.id.layout_inline_edit_attachments);
+            editInlineMessage = itemView.findViewById(R.id.edit_inline_message);
+            textEditHelper = itemView.findViewById(R.id.text_edit_helper);
             textReceived = itemView.findViewById(R.id.text_received);
             textCommand = itemView.findViewById(R.id.text_command);
             textSystem = itemView.findViewById(R.id.text_system);
-            textSentAttachment = itemView.findViewById(R.id.text_sent_attachment);
             textReceivedAttachment = itemView.findViewById(R.id.text_received_attachment);
             
-            imageReceived = itemView.findViewById(R.id.image_received);
-            imageReceivedSecondary = itemView.findViewById(R.id.image_received_secondary);
-            imageCommand = itemView.findViewById(R.id.image_command);
-            imageCommandSecondary = itemView.findViewById(R.id.image_command_secondary);
             imageSentAttachment = itemView.findViewById(R.id.image_sent_attachment);
+            layoutReceivedImages = itemView.findViewById(R.id.layout_received_images);
+            layoutSentAttachments = itemView.findViewById(R.id.layout_sent_attachments);
             
-            cardReceived = (MaterialCardView) ((ViewGroup) layoutReceived).getChildAt(0);
-            cardCommand = (MaterialCardView) ((ViewGroup) layoutCommand).getChildAt(0);
-            cardSystem = (MaterialCardView) ((ViewGroup) layoutSystem).getChildAt(0);
+            cardSent = itemView.findViewById(R.id.card_sent);
+            cardCommand = itemView.findViewById(R.id.card_command);
+            cardSystem = itemView.findViewById(R.id.card_system);
 
             buttonEdit = itemView.findViewById(R.id.button_edit_message);
             buttonDelete = itemView.findViewById(R.id.button_delete_message);
+            buttonInlineCancel = itemView.findViewById(R.id.button_inline_cancel);
+            buttonInlineUpdate = itemView.findViewById(R.id.button_inline_update);
+            buttonInlineBranch = itemView.findViewById(R.id.button_inline_branch);
         }
     }
 
     private void bindMessageActions(ChatViewHolder holder, ChatMessage message, boolean allowEdit) {
         boolean canModify = message != null && message.isSent() && allowEdit;
+        if (isEditing(message)) canModify = false;
         holder.layoutMessageActions.setVisibility(canModify ? View.VISIBLE : View.GONE);
-        holder.buttonEdit.setVisibility(canModify ? View.VISIBLE : View.GONE);
-        holder.buttonDelete.setVisibility(canModify ? View.VISIBLE : View.GONE);
-        if (!canModify) {
-            holder.buttonEdit.setOnClickListener(null);
-            holder.buttonDelete.setOnClickListener(null);
-            return;
-        }
+        if (!canModify) return;
         holder.buttonEdit.setOnClickListener(v -> {
-            if (messageActionListener != null) messageActionListener.onEdit(message);
+            setEditingMessageId(message.getId());
         });
         holder.buttonDelete.setOnClickListener(v -> {
             if (messageActionListener != null) messageActionListener.onDelete(message);
         });
     }
 
+    private boolean isEditing(ChatMessage message) {
+        return message != null && message.getId() != null && message.getId().equals(editingMessageId);
+    }
+
+    private void bindInlineEditor(ChatViewHolder holder, ChatMessage message, String content, Context context) {
+        boolean editing = isEditing(message);
+        holder.layoutInlineEdit.setVisibility(editing ? View.VISIBLE : View.GONE);
+        holder.textSent.setVisibility(editing ? View.GONE : View.VISIBLE);
+        holder.layoutInlineEditAttachments.setVisibility(View.GONE);
+        holder.layoutInlineEditAttachments.removeAllViews();
+
+        if (!editing) {
+            holder.textSent.setText(formatRichText(content, context, true, false, true));
+            setupTextViewForLinks(holder.textSent);
+            return;
+        }
+        holder.editInlineMessage.setText(content);
+        holder.editInlineMessage.setSelection(holder.editInlineMessage.getText() == null ? 0 : holder.editInlineMessage.getText().length());
+        holder.editInlineMessage.post(() -> {
+            holder.editInlineMessage.requestFocus();
+            InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.showSoftInput(holder.editInlineMessage, InputMethodManager.SHOW_IMPLICIT);
+        });
+        holder.textEditHelper.setText("Replies after this message will be regenerated.");
+        bindInlineEditAttachmentChips(holder, message);
+
+        holder.buttonInlineCancel.setOnClickListener(v -> setEditingMessageId(""));
+        holder.buttonInlineUpdate.setOnClickListener(v -> {
+            if (messageActionListener == null) return;
+            String updated = holder.editInlineMessage.getText() == null ? "" : holder.editInlineMessage.getText().toString().trim();
+            if (updated.isEmpty()) return;
+            List<ChatMessage.Attachment> editedAttachments = getEditingAttachments(message);
+            setEditingMessageId("");
+            messageActionListener.onInlineEditUpdate(message, updated, editedAttachments);
+        });
+        holder.buttonInlineBranch.setOnClickListener(v -> {
+            if (messageActionListener == null) return;
+            String updated = holder.editInlineMessage.getText() == null ? "" : holder.editInlineMessage.getText().toString().trim();
+            if (updated.isEmpty()) return;
+            List<ChatMessage.Attachment> editedAttachments = getEditingAttachments(message);
+            setEditingMessageId("");
+            messageActionListener.onInlineEditBranch(message, updated, editedAttachments);
+        });
+        holder.buttonInlineBranch.setOnLongClickListener(v -> {
+            if (messageActionListener == null) return true;
+            String updated = holder.editInlineMessage.getText() == null ? "" : holder.editInlineMessage.getText().toString().trim();
+            if (updated.isEmpty()) return true;
+            List<ChatMessage.Attachment> editedAttachments = getEditingAttachments(message);
+            setEditingMessageId("");
+            messageActionListener.onInlineEditPrivateBranch(message, updated, editedAttachments);
+            return true;
+        });
+    }
+
+    private void bindInlineEditAttachmentChips(ChatViewHolder holder, ChatMessage message) {
+        if (message == null || !message.hasAttachment()) return;
+        holder.layoutInlineEditAttachments.setVisibility(View.VISIBLE);
+        List<ChatMessage.Attachment> attachments = getEditingAttachments(message);
+        for (int i = 0; i < attachments.size(); i++) {
+            final int index = i;
+            ChatMessage.Attachment attachment = attachments.get(i);
+            if (attachment == null) continue;
+            String name = attachment.name == null || attachment.name.trim().isEmpty() ? "Attachment" : attachment.name.trim();
+            String mime = attachment.mimeType == null || attachment.mimeType.trim().isEmpty() ? "file" : attachment.mimeType.trim();
+            holder.layoutInlineEditAttachments.addView(createEditableAttachmentChip(
+                    holder.itemView.getContext(),
+                    name,
+                    mime,
+                    () -> {
+                        List<ChatMessage.Attachment> mutable = editingAttachments.get(message.getId());
+                        if (mutable == null || index < 0 || index >= mutable.size()) return;
+                        mutable.remove(index);
+                        notifyDataSetChanged();
+                    }
+            ));
+        }
+    }
+
+    private List<ChatMessage.Attachment> getEditingAttachments(ChatMessage message) {
+        if (message == null || message.getId() == null) return new ArrayList<>();
+        List<ChatMessage.Attachment> cached = editingAttachments.get(message.getId());
+        if (cached != null) return new ArrayList<>(cached);
+        List<ChatMessage.Attachment> seed = new ArrayList<>(message.getAttachments());
+        editingAttachments.put(message.getId(), new ArrayList<>(seed));
+        return seed;
+    }
+
     private void bindAttachmentPreview(ChatViewHolder holder, ChatMessage message) {
-        holder.textSentAttachment.setVisibility(View.GONE);
+        if (isEditing(message)) {
+            holder.textReceivedAttachment.setVisibility(View.GONE);
+            holder.imageSentAttachment.setVisibility(View.GONE);
+            holder.imageSentAttachment.setImageDrawable(null);
+            holder.layoutSentAttachments.removeAllViews();
+            holder.layoutSentAttachments.setVisibility(View.GONE);
+            return;
+        }
         holder.textReceivedAttachment.setVisibility(View.GONE);
         holder.imageSentAttachment.setVisibility(View.GONE);
         holder.imageSentAttachment.setImageDrawable(null);
+        holder.layoutSentAttachments.removeAllViews();
+        holder.layoutSentAttachments.setVisibility(View.GONE);
         if (message == null || !message.hasAttachment()) return;
 
-        String label = attachmentLabel(message);
         if (message.isSent()) {
-            holder.textSentAttachment.setText(label);
-            holder.textSentAttachment.setVisibility(View.VISIBLE);
-            if (message.hasImageAttachment()) {
-                Bitmap bitmap = decodeAttachmentBitmap(message);
-                if (bitmap != null) {
-                    holder.imageSentAttachment.setImageBitmap(bitmap);
-                    holder.imageSentAttachment.setVisibility(View.VISIBLE);
-                    holder.imageSentAttachment.setOnClickListener(v -> {
-                        if (messageActionListener != null) messageActionListener.onImageClick(message.getAttachmentBase64());
-                    });
+            List<ChatMessage.Attachment> attachments = message.getAttachments();
+            int rendered = 0;
+            for (ChatMessage.Attachment attachment : attachments) {
+                if (attachment == null) continue;
+                String mime = attachment.mimeType == null ? "" : attachment.mimeType.toLowerCase(Locale.US);
+                String name = attachment.name == null || attachment.name.trim().isEmpty() ? "Attachment" : attachment.name.trim();
+                if (mime.startsWith("image/")) {
+                    Bitmap bitmap = decodeAttachmentBitmap(attachment.base64);
+                    if (bitmap != null) {
+                        ImageView imageView = createAttachmentImageView(holder.itemView.getContext(), true);
+                        imageView.setImageBitmap(bitmap);
+                        String base64 = attachment.base64;
+                        imageView.setOnClickListener(v -> {
+                            if (messageActionListener != null) messageActionListener.onImageClick(base64);
+                        });
+                        holder.layoutSentAttachments.addView(imageView);
+                        rendered++;
+                        continue;
+                    }
                 }
+                holder.layoutSentAttachments.addView(createAttachmentChip(holder.itemView.getContext(), name, mime));
+                rendered++;
+            }
+            holder.layoutSentAttachments.setVisibility(rendered > 0 ? View.VISIBLE : View.GONE);
+            if (rendered == 0) {
+                holder.layoutSentAttachments.addView(createAttachmentChip(
+                        holder.itemView.getContext(),
+                        "Attachment",
+                        "unavailable preview"
+                ));
+                holder.layoutSentAttachments.setVisibility(View.VISIBLE);
             }
         } else {
-            holder.textReceivedAttachment.setText(label);
+            int count = message.getAttachments().size();
+            String suffix = count > 1 ? " (+" + (count - 1) + " more)" : "";
+            holder.textReceivedAttachment.setText("Attached: " + message.getAttachmentName() + suffix);
             holder.textReceivedAttachment.setVisibility(View.VISIBLE);
         }
     }
 
-    private String attachmentLabel(ChatMessage message) {
-        String name = message.getAttachmentName();
-        String mime = message.getAttachmentMimeType();
-        if (name == null || name.trim().isEmpty()) name = "attachment";
-        if (mime == null || mime.trim().isEmpty()) return "Attached: " + name;
-        return "Attached: " + name + " (" + mime + ")";
-    }
-
-    private Bitmap decodeAttachmentBitmap(ChatMessage message) {
+    private Bitmap decodeAttachmentBitmap(String base64) {
         try {
-            byte[] bytes = Base64.decode(message.getAttachmentBase64(), Base64.DEFAULT);
+            byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
             return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
         } catch (Exception ignored) {
             return null;
@@ -319,92 +412,119 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
         ChatMessage current = messages.get(position);
         if (current == null || !current.isSent()) return false;
         for (int i = messages.size() - 1; i > position; i--) {
-            ChatMessage message = messages.get(i);
-            if (message != null && message.isSent()) return false;
+            ChatMessage m = messages.get(i);
+            if (m != null && m.isSent()) return false;
         }
         return true;
     }
 
-    private String lastUserMessageId(List<ChatMessage> source) {
-        if (source == null) return "";
-        for (int i = source.size() - 1; i >= 0; i--) {
-            ChatMessage message = source.get(i);
-            if (message != null && message.isSent()) return message.getId();
-        }
-        return "";
-    }
-
-    private void notifyMessageChanged(String messageId) {
-        if (messageId == null || messageId.isEmpty()) return;
-        for (int i = 0; i < messages.size(); i++) {
-            ChatMessage message = messages.get(i);
-            if (message != null && messageId.equals(message.getId())) {
-                notifyItemChanged(i);
-                return;
-            }
-        }
-    }
-
-    private void bindTextAndImage(TextView textView, ImageView imageView, ImageView secondaryImageView, String content, boolean isSent, boolean isCommandCard) {
+    private void bindEmbeddedImages(ChatViewHolder holder, String content) {
+        holder.layoutReceivedImages.removeAllViews();
         List<String> imageUrls = extractImageUrls(content);
-        String imageUrl = imageUrls.isEmpty() ? "" : imageUrls.get(0);
-        String secondaryImageUrl = imageUrls.size() > 1 ? imageUrls.get(1) : "";
-        String visibleText = stripImageMarker(content).trim();
-        if (imageUrl.isEmpty()) imageUrl = firstImageUrl(visibleText);
-        
-        textView.setText(formatRichText(visibleText, textView.getContext(), isSent, isCommandCard, true));
-        setupTextViewForLinks(textView);
-        
-        if (imageUrl.isEmpty()) {
-            imageView.setImageDrawable(null);
-            imageView.setVisibility(View.GONE);
-            secondaryImageView.setImageDrawable(null);
-            secondaryImageView.setVisibility(View.GONE);
+        if (imageUrls.isEmpty()) {
+            holder.layoutReceivedImages.setVisibility(View.GONE);
             return;
         }
-        loadImage(imageView, imageUrl);
-        if (secondaryImageUrl.isEmpty()) {
-            secondaryImageView.setImageDrawable(null);
-            secondaryImageView.setVisibility(View.GONE);
-        } else {
-            loadImage(secondaryImageView, secondaryImageUrl);
+        holder.layoutReceivedImages.setVisibility(View.VISIBLE);
+        for (String imageUrl : imageUrls) {
+            ImageView imageView = createAttachmentImageView(holder.itemView.getContext(), false);
+            holder.layoutReceivedImages.addView(imageView);
+            loadImage(imageView, imageUrl);
         }
     }
 
     private void loadImage(ImageView imageView, String imageUrl) {
-        final String resolvedImageUrl = imageUrl;
-        imageView.setTag(resolvedImageUrl);
         imageView.setVisibility(View.VISIBLE);
         imageView.setImageResource(android.R.drawable.ic_menu_gallery);
-        
         IMAGE_EXECUTOR.execute(() -> {
             try {
-                Bitmap bitmap = BitmapFactory.decodeStream(new URL(resolvedImageUrl).openStream());
+                Bitmap bitmap = BitmapFactory.decodeStream(new URL(imageUrl).openStream());
                 imageView.post(() -> {
-                    if (resolvedImageUrl.equals(imageView.getTag())) {
-                        if (bitmap != null) {
-                            imageView.setImageBitmap(bitmap);
-                            imageView.setOnClickListener(v -> {
-                                if (messageActionListener != null) {
-                                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
-                                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
-                                    String base64 = Base64.encodeToString(stream.toByteArray(), Base64.DEFAULT);
-                                    messageActionListener.onImageClick(base64);
-                                }
-                            });
-                        } else {
-                            imageView.setImageResource(android.R.drawable.ic_menu_report_image);
-                        }
+                    if (bitmap != null) {
+                        imageView.setImageBitmap(bitmap);
+                        imageView.setOnClickListener(v -> {
+                            if (messageActionListener != null) {
+                                ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                                messageActionListener.onImageClick(Base64.encodeToString(stream.toByteArray(), Base64.DEFAULT));
+                            }
+                        });
                     }
                 });
-            } catch (Exception ignored) {
-                imageView.post(() -> {
-                    if (resolvedImageUrl.equals(imageView.getTag())) {
-                        imageView.setImageResource(android.R.drawable.ic_menu_report_image);
-                    }
-                });
-            }
+            } catch (Exception ignored) {}
         });
+    }
+
+    private ImageView createAttachmentImageView(Context context, boolean sent) {
+        ImageView imageView = new ImageView(context);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        params.topMargin = sent ? dp(context, 8) : dp(context, 6);
+        imageView.setLayoutParams(params);
+        imageView.setAdjustViewBounds(true);
+        imageView.setMaxWidth(dp(context, sent ? 220 : 260));
+        imageView.setScaleType(sent ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER);
+        return imageView;
+    }
+
+    private TextView createAttachmentChip(Context context, String name, String mime) {
+        AppCompatTextView chip = new AppCompatTextView(context);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        params.topMargin = dp(context, 6);
+        chip.setLayoutParams(params);
+        chip.setBackgroundResource(R.drawable.assistant_attachment_chip_bg);
+        chip.setPadding(dp(context, 10), dp(context, 6), dp(context, 10), dp(context, 6));
+        chip.setTextColor(ContextCompat.getColor(context, android.R.color.white));
+        chip.setMaxWidth(dp(context, 230));
+        String safeMime = mime == null || mime.trim().isEmpty() ? "file" : mime;
+        chip.setText(name + " (" + safeMime + ")");
+        return chip;
+    }
+
+    private View createEditableAttachmentChip(Context context, String name, String mime, Runnable onRemove) {
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        params.topMargin = dp(context, 6);
+        row.setLayoutParams(params);
+        row.setBackgroundResource(R.drawable.assistant_attachment_chip_bg);
+        row.setPadding(dp(context, 10), dp(context, 4), dp(context, 6), dp(context, 4));
+
+        AppCompatTextView text = new AppCompatTextView(context);
+        text.setTextColor(ContextCompat.getColor(context, android.R.color.white));
+        text.setMaxWidth(dp(context, 140));
+        text.setText(name + " (" + mime + ")");
+        row.addView(text);
+
+        MaterialButton remove = new MaterialButton(context, null, com.google.android.material.R.attr.materialIconButtonStyle);
+        LinearLayout.LayoutParams removeParams = new LinearLayout.LayoutParams(dp(context, 20), dp(context, 20));
+        removeParams.leftMargin = dp(context, 4);
+        remove.setLayoutParams(removeParams);
+        remove.setMinimumWidth(0);
+        remove.setMinimumHeight(0);
+        remove.setMinWidth(0);
+        remove.setMinHeight(0);
+        remove.setInsetTop(0);
+        remove.setInsetBottom(0);
+        remove.setPadding(0, 0, 0, 0);
+        remove.setIconSize(dp(context, 12));
+        remove.setIconResource(android.R.drawable.ic_menu_close_clear_cancel);
+        remove.setOnClickListener(v -> onRemove.run());
+        row.addView(remove);
+        return row;
+    }
+
+    private int dp(Context context, int value) {
+        return (int) (value * context.getResources().getDisplayMetrics().density);
     }
 
     private List<String> extractImageUrls(String content) {
@@ -418,10 +538,12 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
             if (!url.isEmpty()) urls.add(url);
             start = content.indexOf(IMAGE_PREFIX, end + IMAGE_SUFFIX.length());
         }
-        Matcher markdownImage = MARKDOWN_IMAGE_PATTERN.matcher(content);
-        while (markdownImage.find()) {
-            String url = cleanUrl(markdownImage.group(1));
-            if (!url.isEmpty()) urls.add(url);
+        Matcher markdownMatcher = MARKDOWN_IMAGE_PATTERN.matcher(content);
+        while (markdownMatcher.find()) {
+            String markdownUrl = markdownMatcher.group(1);
+            if (markdownUrl != null && !markdownUrl.trim().isEmpty() && !urls.contains(markdownUrl.trim())) {
+                urls.add(markdownUrl.trim());
+            }
         }
         return urls;
     }
@@ -436,180 +558,125 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
             cleaned = cleaned.substring(0, start) + cleaned.substring(end + IMAGE_SUFFIX.length());
             start = cleaned.indexOf(IMAGE_PREFIX);
         }
-        return MARKDOWN_IMAGE_PATTERN.matcher(cleaned).replaceAll("");
+        cleaned = MARKDOWN_IMAGE_PATTERN.matcher(cleaned).replaceAll("").trim();
+        return cleaned;
     }
 
-    private CharSequence formatRichText(String content, Context context, boolean isSent, boolean isCommandCard, boolean applyLinkify) {
-        if (content == null) content = "";
+    private CharSequence formatRichText(String rawContent, Context context, boolean isSent, boolean isCommandCard, boolean applyLinkify) {
+        if (rawContent == null) return "";
         SpannableStringBuilder builder = new SpannableStringBuilder();
-        String[] lines = content.split("\\n", -1);
         
+        String[] lines = rawContent.split("\\n", -1);
         boolean inCodeBlock = false;
-        
+
         for (String rawLine : lines) {
-            if (rawLine.trim().startsWith("```")) {
+            String trimmed = rawLine.trim();
+            if (trimmed.startsWith("```")) {
                 inCodeBlock = !inCodeBlock;
-                continue; 
+                continue;
             }
-            
+
             int start = builder.length();
-            String line = rawLine;
-            
             if (inCodeBlock) {
+                builder.append(rawLine).append("\n");
+                builder.setSpan(new TypefaceSpan("monospace"), start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                builder.setSpan(new BackgroundColorSpan(Color.parseColor("#15000000")), start, Math.max(start, builder.length() - 1), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                continue;
+            }
+
+            // Tables
+            if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
+                String line = trimmed.substring(1, trimmed.length() - 1).replace("|", "  │  ");
                 builder.append(line).append("\n");
                 builder.setSpan(new TypefaceSpan("monospace"), start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                builder.setSpan(new BackgroundColorSpan(Color.parseColor("#20888888")), start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                builder.setSpan(new RelativeSizeSpan(0.85f), start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 continue;
             }
-            
-            String trimmed = line.trim();
-            boolean heading = trimmed.startsWith("# ");
-            boolean subHeading = trimmed.startsWith("## ") || (trimmed.startsWith("===") && trimmed.endsWith("==="));
-            boolean bullet = trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("+ ");
-            boolean numbered = trimmed.matches("\\d+\\.\\s+.*");
-            boolean checklist = trimmed.startsWith("- [ ] ") || trimmed.startsWith("- [x] ") || trimmed.startsWith("- [X] ");
-            boolean quote = trimmed.startsWith("> ");
-            boolean tableRow = trimmed.startsWith("|") && trimmed.endsWith("|");
-            boolean tableDivider = tableRow && trimmed.matches("\\|?\\s*:?[-]{3,}:?\\s*(\\|\\s*:?[-]{3,}:?\\s*)+\\|?");
-            
-            if (heading) {
-                line = trimmed.substring(2).trim();
-            } else if (subHeading) {
-                line = trimmed.startsWith("===") ? trimmed.replace("=", "").trim() : trimmed.replaceFirst("^#+\\s*", "").trim();
-            } else if (checklist) {
-                boolean checked = trimmed.toLowerCase(Locale.US).startsWith("- [x]");
-                line = (checked ? "[x] " : "[ ] ") + trimmed.substring(6).trim();
-            } else if (bullet) {
-                line = "• " + trimmed.substring(2).trim();
-            } else if (numbered) {
-                line = trimmed;
-            } else if (quote) {
-                line = trimmed.substring(2).trim();
-            } else if (tableDivider) {
+
+            // Quotes
+            if (trimmed.startsWith("> ")) {
+                builder.append(trimmed.substring(2)).append("\n");
+                builder.setSpan(new StyleSpan(Typeface.ITALIC), start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                builder.setSpan(new BackgroundColorSpan(Color.parseColor("#10000000")), start, Math.max(start, builder.length() - 1), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 continue;
-            } else if (tableRow) {
-                line = trimmed.substring(1, trimmed.length() - 1).replace("|", "   ");
             }
-            
-            builder.append(line).append("\n");
-            int end = builder.length();
-            
-            if (heading || subHeading || "Local command result:\n\n".trim().equals(line)) {
-                builder.setSpan(new StyleSpan(Typeface.BOLD), start, Math.max(start, end - 1), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                builder.setSpan(new RelativeSizeSpan(heading ? 1.22f : 1.1f), start, Math.max(start, end - 1), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            } else if (quote) {
-                builder.setSpan(new BackgroundColorSpan(Color.parseColor("#12000000")), start, Math.max(start, end - 1), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                builder.setSpan(new StyleSpan(Typeface.ITALIC), start, Math.max(start, end - 1), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            } else if (tableRow) {
-                builder.setSpan(new TypefaceSpan("monospace"), start, Math.max(start, end - 1), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            } else if (bullet || numbered || checklist) {
-                int colon = line.indexOf(':');
-                if (colon > 0) {
-                    builder.setSpan(new StyleSpan(Typeface.BOLD), start, start + colon, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+            // Bullets
+            if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+                builder.append("  • ").append(trimmed.substring(2)).append("\n");
+                continue;
+            }
+
+            // Numbered
+            if (trimmed.matches("\\d+\\.\\s+.*")) {
+                builder.append("  ").append(trimmed).append("\n");
+                continue;
+            }
+
+            builder.append(rawLine).append("\n");
+        }
+        trimTrailingNewline(builder);
+
+        // Inline Code
+        applyInlineStyle(builder, "`", new TypefaceSpan("monospace"), new BackgroundColorSpan(Color.parseColor("#15000000")));
+        // Bold
+        applyInlineStyle(builder, "**", new StyleSpan(Typeface.BOLD));
+        // Italic
+        applyInlineStyle(builder, "*", new StyleSpan(Typeface.ITALIC));
+        // Strikethrough
+        applyInlineStyle(builder, "~~", new android.text.style.StrikethroughSpan());
+
+        // Highlight recognized commands using shared parser/registry metadata
+        for (AssistantCommandParser.Span span : AssistantCommandParser.findCommands(builder.toString())) {
+            int start = Math.max(0, Math.min(span.start, builder.length()));
+            int end = Math.max(start, Math.min(span.end, builder.length()));
+            if (end > start) {
+                builder.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                builder.setSpan(new BackgroundColorSpan(Color.parseColor("#20888888")), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                if (commandListener != null) {
+                    String commandText = span.command;
+                    builder.setSpan(new ClickableSpan() {
+                        @Override
+                        public void onClick(@NonNull View widget) {
+                            commandListener.onCommandClick(commandText);
+                        }
+
+                        @Override
+                        public void updateDrawState(@NonNull TextPaint ds) {
+                            super.updateDrawState(ds);
+                            ds.setUnderlineText(false);
+                        }
+                    }, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 }
             }
         }
-        trimTrailingNewline(builder);
-        
-        applyInlineCode(builder);
-        applyInlineStrikethrough(builder);
-        applyMarkdownLinks(builder);
-        applyInlineBold(builder);
-        applyInlineItalic(builder);
-        
+
         if (applyLinkify) {
             try {
                 Linkify.addLinks(builder, Linkify.WEB_URLS);
-            } catch (Exception ignored) {} 
+            } catch (Exception ignored) {}
         }
-
-        try {
-            for (AssistantCommandParser.Span span : AssistantCommandParser.findCommands(builder.toString())) {
-                final String finalCmd = span.command;
-                final boolean isSuggestion = span.isSuggestion;
-                
-                // Add a bold and background color highlight span to make it look like a chip
-                int bgColor = isSuggestion ? 0x228B008B : 0x220000FF; // Semi-transparent magenta/blue
-                builder.setSpan(new BackgroundColorSpan(bgColor), span.start, span.end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                
-                builder.setSpan(new ClickableSpan() {
-                    @Override
-                    public void onClick(@NonNull View widget) {
-                        if (commandListener != null) {
-                            commandListener.onCommandClick(finalCmd);
-                        }
-                    }
-
-                    @Override
-                    public void updateDrawState(@NonNull TextPaint ds) {
-                        super.updateDrawState(ds);
-                        ds.setUnderlineText(false);
-                        if (isSuggestion) {
-                            ds.setColor(com.google.android.material.color.MaterialColors.getColor(context, androidx.appcompat.R.attr.colorAccent, Color.MAGENTA));
-                            ds.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-                            return;
-                        }
-                        if (isSent) {
-                            ds.setColor(com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSurface, Color.BLACK));
-                            ds.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-                        } else if (isCommandCard) {
-                            ds.setColor(com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnPrimaryContainer, Color.BLUE));
-                            ds.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-                        } else {
-                            ds.setColor(com.google.android.material.color.MaterialColors.getColor(context, androidx.appcompat.R.attr.colorPrimary, Color.BLUE));
-                            ds.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-                        }
-                    }
-                }, span.start, span.end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            }
-        } catch (Exception ignored) {} 
-        
-        try {
-            Matcher placeholderMatcher = PLACEHOLDER_PATTERN.matcher(builder.toString());
-            int placeholderSearchStart = 0;
-            while (placeholderMatcher.find(placeholderSearchStart)) {
-                int start = placeholderMatcher.start();
-                int end = placeholderMatcher.end();
-                final String foundPlaceholder = placeholderMatcher.group();
-                
-                builder.setSpan(new BackgroundColorSpan(0x22FFA500), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                builder.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                builder.setSpan(new ClickableSpan() {
-                    @Override
-                    public void onClick(@NonNull View widget) {
-                        if (commandListener != null) {
-                            commandListener.onCommandClick(foundPlaceholder);
-                        }
-                    }
-
-                    @Override
-                    public void updateDrawState(@NonNull TextPaint ds) {
-                        super.updateDrawState(ds);
-                        ds.setUnderlineText(false);
-                        ds.setColor(com.google.android.material.color.MaterialColors.getColor(context, androidx.appcompat.R.attr.colorAccent, Color.rgb(255, 165, 0))); // Orange
-                    }
-                }, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                
-                placeholderSearchStart = end;
-                placeholderMatcher = PLACEHOLDER_PATTERN.matcher(builder.toString());
-            }
-        } catch (Exception ignored) {}
-        
-        // Remove structural tags from visible text, keeping inner content text intact
-        String[] prefixes = {"[[suggest:", "[[command:"};
-        for (String prefix : prefixes) {
-            int prefixLen = prefix.length();
-            int idx = builder.toString().indexOf(prefix);
-            while (idx >= 0) {
-                int endIdx = builder.toString().indexOf("]]", idx);
-                if (endIdx < 0) break;
-                builder.delete(endIdx, endIdx + 2);
-                builder.delete(idx, idx + prefixLen);
-                idx = builder.toString().indexOf(prefix);
-            }
-        }
-        
         return builder;
+    }
+
+    private void applyInlineStyle(SpannableStringBuilder builder, String delimiter, Object... spans) {
+        String text = builder.toString();
+        int start = text.indexOf(delimiter);
+        while (start != -1) {
+            int end = text.indexOf(delimiter, start + delimiter.length());
+            if (end == -1) break;
+
+            builder.delete(end, end + delimiter.length());
+            builder.delete(start, start + delimiter.length());
+
+            for (Object span : spans) {
+                // Clone span if possible or create new instance of same type (simplified for now)
+                builder.setSpan(span, start, end - delimiter.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+
+            text = builder.toString();
+            start = text.indexOf(delimiter, end - delimiter.length());
+        }
     }
 
     private void trimTrailingNewline(SpannableStringBuilder builder) {
@@ -618,146 +685,44 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
         }
     }
 
-    private void applyInlineCode(SpannableStringBuilder builder) {
-        String marker = "`";
-        int startMarker = builder.toString().indexOf(marker);
-        while (startMarker >= 0) {
-            int endMarker = builder.toString().indexOf(marker, startMarker + marker.length());
-            if (endMarker < 0) break;
-            builder.delete(endMarker, endMarker + marker.length());
-            builder.delete(startMarker, startMarker + marker.length());
-            builder.setSpan(new TypefaceSpan("monospace"), startMarker, endMarker - marker.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            builder.setSpan(new BackgroundColorSpan(Color.parseColor("#20888888")), startMarker, endMarker - marker.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            startMarker = builder.toString().indexOf(marker, startMarker + 1);
-        }
-    }
-
-    private void applyInlineStrikethrough(SpannableStringBuilder builder) {
-        String marker = "~~";
-        int startMarker = builder.toString().indexOf(marker);
-        while (startMarker >= 0) {
-            int endMarker = builder.toString().indexOf(marker, startMarker + marker.length());
-            if (endMarker < 0) break;
-            builder.delete(endMarker, endMarker + marker.length());
-            builder.delete(startMarker, startMarker + marker.length());
-            builder.setSpan(new StrikethroughSpan(), startMarker, endMarker - marker.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            startMarker = builder.toString().indexOf(marker, startMarker + 1);
-        }
-    }
-
-    private void applyMarkdownLinks(SpannableStringBuilder builder) {
-        Pattern pattern = Pattern.compile("\\[([^\\]]+)]\\((https?://[^\\s)]+)\\)");
-        Matcher matcher = pattern.matcher(builder.toString());
-        int searchStart = 0;
-        while (matcher.find(searchStart)) {
-            String label = matcher.group(1);
-            String url = matcher.group(2);
-            int start = matcher.start();
-            int end = matcher.end();
-            builder.replace(start, end, label);
-            builder.setSpan(new URLSpan(url), start, start + label.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            searchStart = start + label.length();
-            matcher = pattern.matcher(builder.toString());
-        }
-    }
-
-    private void applyInlineBold(SpannableStringBuilder builder) {
-        applyStyle(builder, "**", Typeface.BOLD);
-    }
-
-    private void applyInlineItalic(SpannableStringBuilder builder) {
-        applyStyle(builder, "*", Typeface.ITALIC);
-    }
-
-    private void applyStyle(SpannableStringBuilder builder, String marker, int style) {
-        int markerLen = marker.length();
-        int startMarker = builder.toString().indexOf(marker);
-        while (startMarker >= 0) {
-            int endMarker = builder.toString().indexOf(marker, startMarker + markerLen);
-            if (endMarker < 0) break;
-            builder.delete(endMarker, endMarker + markerLen);
-            builder.delete(startMarker, startMarker + markerLen);
-            builder.setSpan(new StyleSpan(style), startMarker, endMarker - markerLen, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            startMarker = builder.toString().indexOf(marker, startMarker + 1);
-        }
-    }
-
-    private String firstImageUrl(String content) {
-        if (content == null) return "";
-        Matcher matcher = URL_PATTERN.matcher(content);
-        while (matcher.find()) {
-            String url = cleanUrl(matcher.group());
-            if (isImageUrl(url)) return url;
-        }
-        return "";
-    }
-
-    private boolean isImageUrl(String url) {
-        String lower = url == null ? "" : url.toLowerCase();
-        return lower.endsWith(".png")
-                || lower.endsWith(".jpg")
-                || lower.endsWith(".jpeg")
-                || lower.endsWith(".webp")
-                || lower.endsWith(".gif")
-                || lower.contains("pubchem.ncbi.nlm.nih.gov/image/")
-                || lower.contains("pubchem.ncbi.nlm.nih.gov/image/imgsrv.fcgi");
-    }
-
-    private String cleanUrl(String url) {
-        while (url.endsWith(".") || url.endsWith(",") || url.endsWith(")") || url.endsWith("]")) {
-            url = url.substring(0, url.length() - 1);
-        }
-        return url;
-    }
-
     private static final class ChatDiffCallback extends DiffUtil.Callback {
         private final List<ChatMessage> oldMessages;
         private final List<ChatMessage> newMessages;
 
         ChatDiffCallback(List<ChatMessage> oldMessages, List<ChatMessage> newMessages) {
-            this.oldMessages = oldMessages == null ? new ArrayList<>() : oldMessages;
-            this.newMessages = newMessages == null ? new ArrayList<>() : newMessages;
+            this.oldMessages = oldMessages;
+            this.newMessages = newMessages;
         }
 
-        @Override
-        public int getOldListSize() {
-            return oldMessages.size();
+        @Override public int getOldListSize() { return oldMessages.size(); }
+        @Override public int getNewListSize() { return newMessages.size(); }
+
+        @Override public boolean areItemsTheSame(int oldPos, int newPos) {
+            return oldMessages.get(oldPos).getId().equals(newMessages.get(newPos).getId());
         }
 
-        @Override
-        public int getNewListSize() {
-            return newMessages.size();
+        @Override public boolean areContentsTheSame(int oldPos, int newPos) {
+            ChatMessage o = oldMessages.get(oldPos);
+            ChatMessage n = newMessages.get(newPos);
+            boolean sameCore = o.getContent().equals(n.getContent())
+                    && o.isSent() == n.isSent()
+                    && o.getAttachments().size() == n.getAttachments().size();
+            if (!sameCore) return false;
+
+            boolean oldWasLastUser = isLastUserMessage(oldMessages, oldPos);
+            boolean newIsLastUser = isLastUserMessage(newMessages, newPos);
+            return oldWasLastUser == newIsLastUser;
         }
 
-        @Override
-        public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
-            ChatMessage oldMessage = oldMessages.get(oldItemPosition);
-            ChatMessage newMessage = newMessages.get(newItemPosition);
-            if (oldMessage == null || newMessage == null) return oldMessage == newMessage;
-            return stringEquals(oldMessage.getId(), newMessage.getId());
+        private boolean isLastUserMessage(List<ChatMessage> list, int position) {
+            if (position < 0 || position >= list.size()) return false;
+            ChatMessage current = list.get(position);
+            if (current == null || !current.isSent()) return false;
+            for (int i = list.size() - 1; i > position; i--) {
+                ChatMessage m = list.get(i);
+                if (m != null && m.isSent()) return false;
+            }
+            return true;
         }
-
-        @Override
-        public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
-            ChatMessage oldMessage = oldMessages.get(oldItemPosition);
-            ChatMessage newMessage = newMessages.get(newItemPosition);
-            if (oldMessage == null || newMessage == null) return oldMessage == newMessage;
-            return oldMessage.isSent() == newMessage.isSent()
-                    && oldMessage.getCreatedAt() == newMessage.getCreatedAt()
-                    && stringEquals(oldMessage.getContent(), newMessage.getContent())
-                    && stringEquals(oldMessage.getAttachmentName(), newMessage.getAttachmentName())
-                    && stringEquals(oldMessage.getAttachmentMimeType(), newMessage.getAttachmentMimeType())
-                    && stringEquals(oldMessage.getAttachmentBase64(), newMessage.getAttachmentBase64());
-        }
-
-        private static boolean stringEquals(String first, String second) {
-            if (first == null) return second == null;
-            return first.equals(second);
-        }
-    }
-
-    private static boolean stringEquals(String first, String second) {
-        if (first == null) return second == null;
-        return first.equals(second);
     }
 }

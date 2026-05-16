@@ -111,4 +111,10 @@
         android:id="@+id/globalSettingsFragment"
         android:name="brettdansmith.drugdiary.ui.settings.GlobalSettingsFragment"
         android:label="Settings" />
+    <fragment
+        android:id="@+id/attachmentViewerFragment"
+        android:name="brettdansmith.drugdiary.ui.assistant.AttachmentViewerFragment"
+        android:label="Attachment Viewer"
+        tools:layout="@layout/fragment_attachment_viewer" />
+
 </navigation>

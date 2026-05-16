@@ -3,8 +3,6 @@ package brettdansmith.drugdiary.ui.settings;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,21 +17,24 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 
 import brettdansmith.drugdiary.R;
 import brettdansmith.drugdiary.data.settings.AiProvider;
 import brettdansmith.drugdiary.data.settings.LanguageOption;
 import brettdansmith.drugdiary.data.settings.ProviderSettings;
-import brettdansmith.drugdiary.data.settings.SettingsRepository;
 import brettdansmith.drugdiary.data.settings.SettingsState;
 import brettdansmith.drugdiary.data.settings.UnitSystem;
 import brettdansmith.drugdiary.databinding.FragmentGlobalSettingsBinding;
+import brettdansmith.drugdiary.ui.common.ViewModelFactory;
 
 public class GlobalSettingsFragment extends Fragment {
     private FragmentGlobalSettingsBinding binding;
-    private SettingsRepository settings;
+    private SettingsViewModel viewModel;
     private ActivityResultLauncher<Intent> authenticationLauncher;
+    private AiProvider selectedProvider = AiProvider.OPENAI;
+    private boolean isBinding;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -60,17 +61,31 @@ public class GlobalSettingsFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        settings = new SettingsRepository(requireContext());
         
-        populateUI();
+        viewModel = new ViewModelProvider(this, new ViewModelFactory(requireContext()))
+                .get(SettingsViewModel.class);
+
+        observeViewModel();
 
         binding.btnAppReset.setOnClickListener(v -> requestResetAuthentication());
         binding.btnBack.setOnClickListener(v -> NavHostFragment.findNavController(this).navigateUp());
     }
 
-    private void populateUI() {
-        SettingsState state = settings.getState();
+    private void observeViewModel() {
+        viewModel.getGlobalSettings().observe(getViewLifecycleOwner(), state -> {
+            if (state == null) return;
+            populateUI(state);
+        });
 
+        viewModel.getError().observe(getViewLifecycleOwner(), error -> {
+            if (error != null && !error.isEmpty()) {
+                Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void populateUI(SettingsState state) {
+        isBinding = true;
         // --- Language Dropdown ---
         String[] langLabels = { getString(R.string.language_system), getString(R.string.language_english), getString(R.string.language_spanish) };
         LanguageOption[] langOptions = { LanguageOption.SYSTEM, LanguageOption.ENGLISH, LanguageOption.SPANISH };
@@ -79,11 +94,7 @@ public class GlobalSettingsFragment extends Fragment {
         final String langText = langLabels[indexOf(langOptions, state.language)];
         binding.inputGlobalLanguage.post(() -> binding.inputGlobalLanguage.setText(langText, false));
         binding.inputGlobalLanguage.setOnItemClickListener((parent, view, position, id) -> {
-            binding.inputGlobalLanguage.post(() -> {
-                binding.inputGlobalLanguage.dismissDropDown();
-                binding.inputGlobalLanguage.clearFocus();
-                settings.setLanguage(langOptions[position]);
-            });
+            viewModel.setLanguage(langOptions[position]);
         });
 
         // --- Units Dropdown ---
@@ -97,11 +108,7 @@ public class GlobalSettingsFragment extends Fragment {
         final String unitText = unitLabels[unitSelected];
         binding.inputGlobalUnits.post(() -> binding.inputGlobalUnits.setText(unitText, false));
         binding.inputGlobalUnits.setOnItemClickListener((parent, view, position, id) -> {
-            binding.inputGlobalUnits.post(() -> {
-                binding.inputGlobalUnits.dismissDropDown();
-                binding.inputGlobalUnits.clearFocus();
-                settings.setUnitSystem(unitOptions[position]);
-            });
+            viewModel.setUnitSystem(unitOptions[position]);
         });
         
         // --- Theme Dropdown ---
@@ -115,11 +122,7 @@ public class GlobalSettingsFragment extends Fragment {
         final String themeText = themeLabels[themeIndex];
         binding.inputGlobalTheme.post(() -> binding.inputGlobalTheme.setText(themeText, false));
         binding.inputGlobalTheme.setOnItemClickListener((parent, view, position, id) -> {
-            binding.inputGlobalTheme.post(() -> {
-                binding.inputGlobalTheme.dismissDropDown();
-                binding.inputGlobalTheme.clearFocus();
-                settings.setThemeMode(themeOptions[position]);
-            });
+            viewModel.setGlobalTheme(themeOptions[position]);
         });
 
         // --- AI Configuration ---
@@ -129,24 +132,19 @@ public class GlobalSettingsFragment extends Fragment {
         binding.switchNotificationsEnabled.setChecked(state.notificationsEnabled);
         binding.switchStealthNotifications.setChecked(state.stealthNotifications);
         binding.switchAssistantResponseNotifications.setChecked(state.assistantResponseNotifications);
-        binding.switchNotificationsEnabled.setOnCheckedChangeListener((buttonView, isChecked) -> settings.setNotificationsEnabled(isChecked));
-        binding.switchStealthNotifications.setOnCheckedChangeListener((buttonView, isChecked) -> settings.setStealthNotifications(isChecked));
-        binding.switchAssistantResponseNotifications.setOnCheckedChangeListener((buttonView, isChecked) -> settings.setAssistantResponseNotifications(isChecked));
-
-        // --- Popup Visibility ---
-        boolean suppressWelcome = settings.rawPrefs().getBoolean("dont_show_welcome", false);
-        binding.switchShowWelcomeDialog.setChecked(!suppressWelcome);
-        binding.switchShowWelcomeDialog.setOnCheckedChangeListener((buttonView, show) -> {
-            long version = getVersionCode();
-            settings.rawPrefs().edit()
-                    .putBoolean("dont_show_welcome", !show)
-                    .putLong("welcome_version", version)
-                    .apply();
+        binding.switchNotificationsEnabled.setOnCheckedChangeListener((buttonView, checked) -> {
+            if (isBinding) return;
+            new brettdansmith.drugdiary.data.settings.SettingsRepository(requireContext()).setNotificationsEnabled(checked);
         });
-
-        binding.switchShowProfileSetupGuidance.setChecked(state.showProfileSetupGuidance);
-        binding.switchShowProfileSetupGuidance.setOnCheckedChangeListener((buttonView, show) ->
-                settings.setShowProfileSetupGuidance(show));
+        binding.switchStealthNotifications.setOnCheckedChangeListener((buttonView, checked) -> {
+            if (isBinding) return;
+            new brettdansmith.drugdiary.data.settings.SettingsRepository(requireContext()).setStealthNotifications(checked);
+        });
+        binding.switchAssistantResponseNotifications.setOnCheckedChangeListener((buttonView, checked) -> {
+            if (isBinding) return;
+            new brettdansmith.drugdiary.data.settings.SettingsRepository(requireContext()).setAssistantResponseNotifications(checked);
+        });
+        isBinding = false;
     }
 
     private void bindAiConfiguration(SettingsState state) {
@@ -159,104 +157,87 @@ public class GlobalSettingsFragment extends Fragment {
         NoFilterArrayAdapter<String> providerAdapter = new NoFilterArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, providerLabels);
         binding.inputAiProvider.setAdapter(providerAdapter);
 
-        // Set initial selection
         int providerIndex = indexOf(providers, state.assistantProvider);
+        selectedProvider = state.assistantProvider;
         binding.inputAiProvider.post(() -> binding.inputAiProvider.setText(providerLabels[providerIndex], false));
 
-        // Load current provider's model and API key
         loadProviderFields(state.assistantProvider);
 
         binding.inputAiProvider.setOnItemClickListener((parent, view, position, id) -> {
-            binding.inputAiProvider.post(() -> {
-                binding.inputAiProvider.dismissDropDown();
-                binding.inputAiProvider.clearFocus();
-                AiProvider selected = providers[position];
-                settings.setAiProvider(selected);
-                loadProviderFields(selected);
-            });
+            selectedProvider = providers[position];
+            viewModel.setAiProvider(selectedProvider);
+            loadProviderFields(selectedProvider);
         });
 
-        // Save model on focus loss or editor action
-        binding.inputAiModel.setOnFocusChangeListener((v, hasFocus) -> {
-            if (!hasFocus) saveCurrentModel();
-        });
         binding.inputAiModel.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 saveCurrentModel();
-                binding.inputAiModel.clearFocus();
                 return true;
             }
             return false;
         });
-
-        // Save API key on focus loss or editor action
-        binding.inputAiApiKey.setOnFocusChangeListener((v, hasFocus) -> {
-            if (!hasFocus) saveCurrentApiKey();
+        binding.inputAiModel.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) saveCurrentModel();
         });
+
         binding.inputAiApiKey.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 saveCurrentApiKey();
-                binding.inputAiApiKey.clearFocus();
                 return true;
             }
             return false;
         });
+        binding.inputAiApiKey.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) saveCurrentApiKey();
+        });
 
-        // AI Switches
         binding.switchAiMemory.setChecked(state.assistantMemory);
-        binding.switchAiWebSearch.setChecked(settings.isAiWebSearchEnabled());
-        binding.switchAiRequireCitations.setChecked(settings.isAiCitationsRequired());
-        binding.switchAiFallback.setChecked(settings.isAiFallbackEnabled());
+        binding.switchAssistantEntryShare.setChecked(state.assistantEntryFromShareEnabled);
+        binding.switchAssistantEntryTextSelection.setChecked(state.assistantEntryFromTextSelectionEnabled);
+        binding.switchAiWebSearch.setChecked(new brettdansmith.drugdiary.data.settings.SettingsRepository(requireContext()).isAiWebSearchEnabled());
+        binding.switchAiRequireCitations.setChecked(new brettdansmith.drugdiary.data.settings.SettingsRepository(requireContext()).isAiCitationsRequired());
+        binding.switchAiFallback.setChecked(new brettdansmith.drugdiary.data.settings.SettingsRepository(requireContext()).isAiFallbackEnabled());
 
-        binding.switchAiMemory.setOnCheckedChangeListener((v, checked) -> settings.setAssistantMemory(checked));
-        binding.switchAiWebSearch.setOnCheckedChangeListener((v, checked) -> settings.setAiWebSearchEnabled(checked));
-        binding.switchAiRequireCitations.setOnCheckedChangeListener((v, checked) -> settings.setAiCitationsRequired(checked));
-        binding.switchAiFallback.setOnCheckedChangeListener((v, checked) -> settings.setAiFallbackEnabled(checked));
-        
-        // Hide global context switches from view since they are removed from logic
-        binding.switchAiProfileContext.setVisibility(View.GONE);
-        binding.switchAiMedicationContext.setVisibility(View.GONE);
-        binding.switchAiLogContext.setVisibility(View.GONE);
+        binding.switchAiMemory.setOnCheckedChangeListener((buttonView, checked) -> {
+            if (isBinding) return;
+            viewModel.setAssistantMemory(checked);
+        });
+        binding.switchAiWebSearch.setOnCheckedChangeListener((buttonView, checked) -> {
+            if (isBinding) return;
+            viewModel.setAiWebSearchEnabled(checked);
+        });
+        binding.switchAiRequireCitations.setOnCheckedChangeListener((buttonView, checked) -> {
+            if (isBinding) return;
+            viewModel.setAiCitationsRequired(checked);
+        });
+        binding.switchAiFallback.setOnCheckedChangeListener((buttonView, checked) -> {
+            if (isBinding) return;
+            viewModel.setAiFallbackEnabled(checked);
+        });
+        binding.switchAssistantEntryShare.setOnCheckedChangeListener((buttonView, checked) -> {
+            if (isBinding) return;
+            viewModel.setAssistantEntryFromShareEnabled(checked);
+        });
+        binding.switchAssistantEntryTextSelection.setOnCheckedChangeListener((buttonView, checked) -> {
+            if (isBinding) return;
+            viewModel.setAssistantEntryFromTextSelectionEnabled(checked);
+        });
     }
 
     private void loadProviderFields(AiProvider provider) {
-        ProviderSettings ps = settings.getProviderSettings(provider);
+        ProviderSettings ps = viewModel.getProviderSettings(provider);
         binding.inputAiModel.setText(ps.model);
-        binding.layoutAiModel.setHelperText("Default: " + provider.defaultModel());
-
-        // Show masked API key if one exists, otherwise leave empty
-        String apiKey = ps.apiKey;
-        if (apiKey != null && !apiKey.trim().isEmpty()) {
-            binding.inputAiApiKey.setText(apiKey);
-        } else {
-            binding.inputAiApiKey.setText("");
-        }
+        binding.inputAiApiKey.setText(ps.apiKey);
     }
 
     private void saveCurrentModel() {
-        if (binding == null) return;
-        AiProvider currentProvider = settings.getState().assistantProvider;
-        String model = binding.inputAiModel.getText() != null ? binding.inputAiModel.getText().toString().trim() : "";
-        if (model.isEmpty()) {
-            model = currentProvider.defaultModel();
-            binding.inputAiModel.setText(model);
-            Toast.makeText(getContext(), R.string.ai_model_reset_to_default, Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(getContext(), R.string.ai_model_saved, Toast.LENGTH_SHORT).show();
-        }
-        settings.setProviderModel(currentProvider, model);
+        String model = binding.inputAiModel.getText().toString().trim();
+        viewModel.setProviderModel(selectedProvider, model);
     }
 
     private void saveCurrentApiKey() {
-        if (binding == null) return;
-        AiProvider currentProvider = settings.getState().assistantProvider;
-        String apiKey = binding.inputAiApiKey.getText() != null ? binding.inputAiApiKey.getText().toString().trim() : "";
-        settings.setProviderApiKey(currentProvider, apiKey);
-        if (apiKey.isEmpty()) {
-            Toast.makeText(getContext(), R.string.ai_api_key_cleared, Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(getContext(), R.string.ai_api_key_saved, Toast.LENGTH_SHORT).show();
-        }
+        String apiKey = binding.inputAiApiKey.getText().toString().trim();
+        viewModel.setProviderApiKey(selectedProvider, apiKey);
     }
     
     private void requestResetAuthentication() {
@@ -278,14 +259,10 @@ public class GlobalSettingsFragment extends Fragment {
                 .setTitle(R.string.settings_reset_confirm_title)
                 .setMessage(R.string.settings_reset_confirm_body)
                 .setPositiveButton(R.string.settings_reset_confirm_btn, (dialog, which) -> {
-                    settings.resetAllAppData(requireContext());
-                    Toast.makeText(getContext(), R.string.settings_reset_success, Toast.LENGTH_LONG).show();
-                    if (getActivity() != null) {
-                        getActivity().finishAffinity();
-                    }
+                    viewModel.resetAllAppData(requireContext());
+                    getActivity().finishAffinity();
                 })
                 .setNegativeButton(R.string.cancel, null)
-                .setIcon(android.R.drawable.ic_dialog_alert)
                 .show();
     }
 
@@ -296,17 +273,12 @@ public class GlobalSettingsFragment extends Fragment {
         return 0;
     }
 
-    private long getVersionCode() {
-        try {
-            PackageInfo pInfo = requireContext().getPackageManager().getPackageInfo(requireContext().getPackageName(), 0);
-            return android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P ? pInfo.getLongVersionCode() : pInfo.versionCode;
-        } catch (PackageManager.NameNotFoundException e) {
-            return -1L;
-        }
-    }
-
     @Override
     public void onDestroyView() {
+        if (binding != null) {
+            saveCurrentModel();
+            saveCurrentApiKey();
+        }
         super.onDestroyView();
         binding = null;
     }

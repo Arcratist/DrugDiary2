@@ -11,7 +11,6 @@ public final class EffectiveSettings {
     public final LanguageOption language;
     public final UnitSystem unitSystem;
     public final boolean privateMode;
-    public final boolean hideDashboardSensitive;
     public final AiProvider aiProvider;
     public final boolean aiProfileContext;
     public final boolean aiMedicationContext;
@@ -21,9 +20,8 @@ public final class EffectiveSettings {
             int themeMode,
             @NonNull LanguageOption language,
             @NonNull UnitSystem unitSystem,
-            boolean privateMode,
-            boolean hideDashboardSensitive) {
-        this(themeMode, language, unitSystem, privateMode, hideDashboardSensitive, AiProvider.OPENAI, true, true, true);
+            boolean privateMode) {
+        this(themeMode, language, unitSystem, privateMode, AiProvider.OPENAI, true, true, true);
     }
 
     public EffectiveSettings(
@@ -31,7 +29,6 @@ public final class EffectiveSettings {
             @NonNull LanguageOption language,
             @NonNull UnitSystem unitSystem,
             boolean privateMode,
-            boolean hideDashboardSensitive,
             @NonNull AiProvider aiProvider,
             boolean aiProfileContext,
             boolean aiMedicationContext,
@@ -40,7 +37,6 @@ public final class EffectiveSettings {
         this.language = language;
         this.unitSystem = unitSystem;
         this.privateMode = privateMode;
-        this.hideDashboardSensitive = hideDashboardSensitive;
         this.aiProvider = aiProvider;
         this.aiProfileContext = aiProfileContext;
         this.aiMedicationContext = aiMedicationContext;
@@ -61,7 +57,6 @@ public final class EffectiveSettings {
         }
 
         boolean priv = (user.privateModeOverride != null) ? user.privateModeOverride : global.privateMode;
-        boolean hide = (user.hideDashboardSensitiveOverride != null) ? user.hideDashboardSensitiveOverride : global.hideDashboardSensitive;
         AiProvider ai = (user.preferredAiOverride != null) ? user.preferredAiOverride : global.assistantProvider;
 
         // AI context settings are now direct in user settings
@@ -69,6 +64,6 @@ public final class EffectiveSettings {
         boolean aiMedication = user.aiMedicationContext;
         boolean aiLog = user.aiLogContext;
 
-        return new EffectiveSettings(theme, lang, resolvedUnits, priv, hide, ai, aiProfile, aiMedication, aiLog);
+        return new EffectiveSettings(theme, lang, resolvedUnits, priv, ai, aiProfile, aiMedication, aiLog);
     }
 }

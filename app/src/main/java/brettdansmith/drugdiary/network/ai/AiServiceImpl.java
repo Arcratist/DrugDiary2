@@ -39,7 +39,7 @@ public final class AiServiceImpl implements AiService {
 
     @Override
     public AiProvider getCurrentProvider() {
-        return settingsRepo.getAiProvider();
+        return settingsRepo.getGlobalState().assistantProvider;
     }
 
     @Override

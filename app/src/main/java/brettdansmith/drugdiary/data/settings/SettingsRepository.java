@@ -32,6 +32,8 @@ public final class SettingsRepository {
     public static final String PREF_SHOW_PROFILE_SETUP_GUIDANCE = "show_profile_setup_guidance";
     public static final String PREF_AI_MEMORY = "ai_memory";
     public static final String PREF_AI_RESPONSE_NOTIFICATIONS = "ai_response_notifications";
+    public static final String PREF_ASSISTANT_ENTRY_SHARE = "assistant_entry_share_enabled";
+    public static final String PREF_ASSISTANT_ENTRY_TEXT_SELECTION = "assistant_entry_text_selection_enabled";
     public static final String PREF_AI_PROVIDER = "ai_provider";
     public static final String PREF_REFERENCE_CACHE_DAYS = "reference_cache_days";
     public static final String PREF_AI_WEB_SEARCH = "ai_web_search";
@@ -39,8 +41,7 @@ public final class SettingsRepository {
     public static final String PREF_AI_FALLBACK_ENABLED = "ai_fallback_enabled";
     public static final String PREF_AI_FALLBACK_ORDER = "ai_fallback_order";
     public static final String PREF_PRIVATE_MODE = "private_mode";
-    public static final String PREF_HIDE_DASHBOARD_SENSITIVE = "hide_dashboard_sensitive";
-    
+
     // New Global fields
     public static final String PREF_GLOBAL_PRIVACY_COLLECTION = "global_privacy_collection";
 
@@ -84,10 +85,11 @@ public final class SettingsRepository {
                 prefs.getBoolean(PREF_SHOW_PROFILE_SETUP_GUIDANCE, defaults.showProfileSetupGuidance),
                 prefs.getBoolean(PREF_AI_MEMORY, defaults.assistantMemory),
                 prefs.getBoolean(PREF_AI_RESPONSE_NOTIFICATIONS, defaults.assistantResponseNotifications),
+                prefs.getBoolean(PREF_ASSISTANT_ENTRY_SHARE, defaults.assistantEntryFromShareEnabled),
+                prefs.getBoolean(PREF_ASSISTANT_ENTRY_TEXT_SELECTION, defaults.assistantEntryFromTextSelectionEnabled),
                 AiProvider.fromPreference(prefs.getString(PREF_AI_PROVIDER, defaults.assistantProvider.preferenceValue())),
                 prefs.getInt(PREF_REFERENCE_CACHE_DAYS, defaults.referenceCacheDays),
                 prefs.getBoolean(PREF_PRIVATE_MODE, defaults.privateMode),
-                prefs.getBoolean(PREF_HIDE_DASHBOARD_SENSITIVE, defaults.hideDashboardSensitive),
                 prefs.getBoolean(PREF_GLOBAL_PRIVACY_COLLECTION, defaults.globalPrivacyCollection));
     }
 
@@ -150,6 +152,14 @@ public final class SettingsRepository {
 
     public void setAssistantResponseNotifications(boolean enabled) {
         prefs.edit().putBoolean(PREF_AI_RESPONSE_NOTIFICATIONS, enabled).apply();
+    }
+
+    public void setAssistantEntryFromShareEnabled(boolean enabled) {
+        prefs.edit().putBoolean(PREF_ASSISTANT_ENTRY_SHARE, enabled).apply();
+    }
+
+    public void setAssistantEntryFromTextSelectionEnabled(boolean enabled) {
+        prefs.edit().putBoolean(PREF_ASSISTANT_ENTRY_TEXT_SELECTION, enabled).apply();
     }
 
     public void setAiProvider(AiProvider provider) {
@@ -252,14 +262,6 @@ public final class SettingsRepository {
         prefs.edit().putBoolean(PREF_PRIVATE_MODE, enabled).apply();
     }
 
-    public boolean hideDashboardSensitive() {
-        return prefs.getBoolean(PREF_HIDE_DASHBOARD_SENSITIVE, false);
-    }
-
-    public void setHideDashboardSensitive(boolean hide) {
-        prefs.edit().putBoolean(PREF_HIDE_DASHBOARD_SENSITIVE, hide).apply();
-    }
-
     public void setReferenceCacheDays(int days) {
         prefs.edit().putInt(PREF_REFERENCE_CACHE_DAYS, Math.max(1, days)).apply();
     }
@@ -315,6 +317,14 @@ public final class SettingsRepository {
             editor.putBoolean(PREF_AI_RESPONSE_NOTIFICATIONS, SettingsState.defaults().assistantResponseNotifications);
             changed = true;
         }
+        if (!prefs.contains(PREF_ASSISTANT_ENTRY_SHARE)) {
+            editor.putBoolean(PREF_ASSISTANT_ENTRY_SHARE, SettingsState.defaults().assistantEntryFromShareEnabled);
+            changed = true;
+        }
+        if (!prefs.contains(PREF_ASSISTANT_ENTRY_TEXT_SELECTION)) {
+            editor.putBoolean(PREF_ASSISTANT_ENTRY_TEXT_SELECTION, SettingsState.defaults().assistantEntryFromTextSelectionEnabled);
+            changed = true;
+        }
         if (!prefs.contains(PREF_AUTOLOCK_MINUTES)) {
             editor.putInt(PREF_AUTOLOCK_MINUTES, SettingsState.defaults().autoLockMinutes);
             changed = true;
@@ -341,10 +351,6 @@ public final class SettingsRepository {
         }
         if (!prefs.contains(PREF_PRIVATE_MODE)) {
             editor.putBoolean(PREF_PRIVATE_MODE, false);
-            changed = true;
-        }
-        if (!prefs.contains(PREF_HIDE_DASHBOARD_SENSITIVE)) {
-            editor.putBoolean(PREF_HIDE_DASHBOARD_SENSITIVE, false);
             changed = true;
         }
         if (changed) {

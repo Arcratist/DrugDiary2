@@ -8,14 +8,16 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import java.util.Locale;
 
 import brettdansmith.drugdiary.databinding.FragmentDoseCalculatorBinding;
-import brettdansmith.drugdiary.logic.DoseCalculator;
+import brettdansmith.drugdiary.ui.common.ViewModelFactory;
 
 public class DoseCalculatorFragment extends Fragment {
     private FragmentDoseCalculatorBinding binding;
+    private DoseCalculatorViewModel viewModel;
 
     @Nullable
     @Override
@@ -27,25 +29,26 @@ public class DoseCalculatorFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        viewModel = new ViewModelProvider(this, new ViewModelFactory(requireContext()))
+                .get(DoseCalculatorViewModel.class);
+
+        observeViewModel();
+
         binding.buttonCalculateDose.setOnClickListener(v -> calculate());
+    }
+
+    private void observeViewModel() {
+        viewModel.getResult().observe(getViewLifecycleOwner(), result -> {
+            binding.textDoseResult.setText(result);
+        });
     }
 
     private void calculate() {
         double substanceMg = readDouble(binding.inputSubstanceMg.getText());
         double solventMl = readDouble(binding.inputSolventMl.getText());
         double targetMg = readDouble(binding.inputTargetMg.getText());
-        double concentration = DoseCalculator.milligramsPerMilliliter(substanceMg, solventMl);
-        double volume = DoseCalculator.millilitersForDose(targetMg, concentration);
-
-        if (concentration <= 0 || volume <= 0) {
-            binding.textDoseResult.setText("Enter substance amount, liquid volume, and target dose.");
-            return;
-        }
-
-        binding.textDoseResult.setText(String.format(Locale.getDefault(),
-                "Concentration: %.3f mg/ml\nDose volume: %.3f ml",
-                concentration,
-                volume));
+        viewModel.calculate(substanceMg, solventMl, targetMg);
     }
 
     private double readDouble(CharSequence value) {

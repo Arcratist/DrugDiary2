@@ -185,27 +185,6 @@
                     android:text="@string/assistant_memory" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switch_ai_profile_context"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/assistant_profile_context" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switch_ai_medication_context"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/assistant_medication_context" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/switch_ai_log_context"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="@string/assistant_log_context" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/switch_ai_web_search"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -225,6 +204,20 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:text="@string/assistant_fallback" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_assistant_entry_share"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/assistant_entry_share" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_assistant_entry_text_selection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/assistant_entry_text_selection" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

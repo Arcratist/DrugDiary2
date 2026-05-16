@@ -8,10 +8,14 @@ import androidx.lifecycle.ViewModelProvider;
 
 import brettdansmith.drugdiary.domain.service.ServiceLocator;
 import brettdansmith.drugdiary.ui.diary.DiaryListViewModel;
+import brettdansmith.drugdiary.ui.medications.DoseCalculatorViewModel;
 import brettdansmith.drugdiary.ui.medications.MedicationListViewModel;
+import brettdansmith.drugdiary.ui.profile.ProfileViewModel;
 import brettdansmith.drugdiary.ui.reference.InteractionCheckerViewModel;
+import brettdansmith.drugdiary.ui.reference.ReagentChartViewModel;
 import brettdansmith.drugdiary.ui.resources.ResourcesViewModel;
 import brettdansmith.drugdiary.ui.settings.SettingsViewModel;
+import brettdansmith.drugdiary.ui.assistant.AssistantViewModel;
 
 /**
  * Factory for creating ViewModels with ServiceLocator dependency injection.
@@ -40,6 +44,14 @@ public class ViewModelFactory implements ViewModelProvider.Factory {
             return (T) new ResourcesViewModel(serviceLocator);
         } else if (modelClass.isAssignableFrom(InteractionCheckerViewModel.class)) {
             return (T) new InteractionCheckerViewModel(serviceLocator);
+        } else if (modelClass.isAssignableFrom(ProfileViewModel.class)) {
+            return (T) new ProfileViewModel(serviceLocator);
+        } else if (modelClass.isAssignableFrom(DoseCalculatorViewModel.class)) {
+            return (T) new DoseCalculatorViewModel(serviceLocator);
+        } else if (modelClass.isAssignableFrom(ReagentChartViewModel.class)) {
+            return (T) new ReagentChartViewModel(serviceLocator);
+        } else if (modelClass.isAssignableFrom(AssistantViewModel.class)) {
+            return (T) new AssistantViewModel(serviceLocator);
         }
         throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
     }

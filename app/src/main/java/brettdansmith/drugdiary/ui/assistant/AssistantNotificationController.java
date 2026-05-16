@@ -1,8 +1,6 @@
 package brettdansmith.drugdiary.ui.assistant;
 
 import android.Manifest;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -12,13 +10,12 @@ import android.os.Build;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
-import brettdansmith.drugdiary.MainActivity;
+import brettdansmith.drugdiary.app.MainActivity;
 import brettdansmith.drugdiary.R;
 import brettdansmith.drugdiary.data.settings.SettingsRepository;
 import brettdansmith.drugdiary.data.settings.SettingsState;
 
 public final class AssistantNotificationController {
-    private static final String CHANNEL_ID = "assistant_replies";
     private static volatile boolean appInFocus;
 
     private AssistantNotificationController() {
@@ -42,7 +39,7 @@ public final class AssistantNotificationController {
             return;
         }
 
-        ensureChannel(appContext);
+        NotificationRegistry.ensureAllChannels(appContext);
 
         Intent intent = new Intent(appContext, MainActivity.class)
                 .setAction(MainActivity.ACTION_OPEN_ASSISTANT_CHAT)
@@ -61,7 +58,7 @@ public final class AssistantNotificationController {
                 ? appContext.getString(R.string.assistant_reply_ready_stealth_body)
                 : appContext.getString(R.string.assistant_reply_ready_body);
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(appContext, CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(appContext, NotificationRegistry.CHANNEL_ASSISTANT_REPLIES)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(title)
                 .setContentText(body)
@@ -71,18 +68,6 @@ public final class AssistantNotificationController {
                 .setContentIntent(pendingIntent);
 
         NotificationManagerCompat.from(appContext).notify(notificationId(chatId), builder.build());
-    }
-
-    private static void ensureChannel(Context context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-        NotificationManager manager = context.getSystemService(NotificationManager.class);
-        if (manager == null || manager.getNotificationChannel(CHANNEL_ID) != null) return;
-        NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID,
-                context.getString(R.string.assistant_response_notifications),
-                NotificationManager.IMPORTANCE_DEFAULT);
-        channel.setDescription(context.getString(R.string.assistant_reply_ready_body));
-        manager.createNotificationChannel(channel);
     }
 
     private static int notificationId(String chatId) {

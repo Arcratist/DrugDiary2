@@ -1,7 +1,6 @@
 package brettdansmith.drugdiary.domain.assistant;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -9,18 +8,6 @@ import java.util.Locale;
  * Single source of truth for local slash-command recognition and highlighting.
  */
 public final class AssistantCommandParser {
-    private static final List<String> PAYLOAD_COMMANDS = Arrays.asList(
-            "addmed", "reminder", "interact", "pubchem", "rxnorm", "openfda",
-            "chembl", "dailymed", "wikipedia", "drugdata", "alias", "dose", "medinfo",
-            "updatemed", "editmed", "removemed", "deletemed", "delmed", "importmeds"
-    );
-    private static final List<String> OPTIONAL_PAYLOAD_COMMANDS = Arrays.asList(
-            "help", "commands", "?", "newchat", "meds", "sources", "logs", "reminders", "drugcache"
-    );
-    private static final List<String> NO_PAYLOAD_COMMANDS = Arrays.asList(
-            "context", "placeholders", "settings", "privacy", "clearmeds"
-    );
-
     private AssistantCommandParser() {
     }
 
@@ -29,30 +16,35 @@ public final class AssistantCommandParser {
         if (normalized.isEmpty()) return false;
 
         String lower = normalized.toLowerCase(Locale.US);
-        String body = lower.startsWith("//") ? lower.substring(2) : lower.substring(1);
+        String body = lower.substring(1);
         String name = body.split("\\s+", 2)[0];
         String payload = body.length() > name.length() ? body.substring(name.length()).trim() : "";
 
-        if (NO_PAYLOAD_COMMANDS.contains(name)) return payload.isEmpty();
-        if (OPTIONAL_PAYLOAD_COMMANDS.contains(name)) return true;
+        AssistantCommandRegistry.CommandSpec spec = AssistantCommandRegistry.specFor(name);
+        if (spec != null) {
+            if (spec.payloadMode == AssistantCommandRegistry.PayloadMode.NONE) return payload.isEmpty();
+            if (spec.payloadMode == AssistantCommandRegistry.PayloadMode.OPTIONAL) return true;
+            return !payload.isEmpty();
+        }
         if ("drugcache".equals(name)) return payload.isEmpty()
                 || "status".equals(payload)
                 || "clear".equals(payload)
                 || payload.startsWith("warm ");
-        return PAYLOAD_COMMANDS.contains(name) && !payload.isEmpty();
+        return false;
     }
 
     public static String commandName(String command) {
         String normalized = normalize(command);
         if (normalized.isEmpty()) return "";
-        String body = normalized.startsWith("//") ? normalized.substring(2) : normalized.substring(1);
+        String body = normalized.substring(1);
         return body.split("\\s+", 2)[0].toLowerCase(Locale.US);
     }
 
     public static String normalize(String command) {
         if (command == null) return "";
         String trimmed = command.trim();
-        if (!(trimmed.startsWith("/") || trimmed.startsWith("//"))) return "";
+        if (!trimmed.startsWith("/")) return "";
+        if (trimmed.startsWith("//")) return "";
         return stripTrailingPunctuation(trimmed);
     }
 
@@ -162,9 +154,11 @@ public final class AssistantCommandParser {
         if (candidate.isEmpty()) return "";
         String name = commandName(candidate);
         if (name.isEmpty()) return "";
-        String prefix = candidate.startsWith("//") ? "//" : "/";
+        String prefix = "/";
 
-        if (OPTIONAL_PAYLOAD_COMMANDS.contains(name) && !"drugcache".equals(name)) {
+        AssistantCommandRegistry.CommandSpec spec = AssistantCommandRegistry.specFor(name);
+
+        if (spec != null && spec.payloadMode == AssistantCommandRegistry.PayloadMode.OPTIONAL && !"drugcache".equals(name)) {
             if ("help".equals(name)) {
                 String payload = payload(candidate, name);
                 String token = firstToken(payload);
@@ -176,7 +170,7 @@ public final class AssistantCommandParser {
             return prefix + name;
         }
 
-        if (PAYLOAD_COMMANDS.contains(name)) {
+        if (spec != null && spec.payloadMode == AssistantCommandRegistry.PayloadMode.REQUIRED) {
             if (candidate.contains("|")) {
                 return isKnownCommand(candidate) ? candidate : prefix + name;
             }
@@ -221,7 +215,7 @@ public final class AssistantCommandParser {
     }
 
     private static String payload(String normalizedCommand, String name) {
-        String body = normalizedCommand.startsWith("//") ? normalizedCommand.substring(2) : normalizedCommand.substring(1);
+        String body = normalizedCommand.substring(1);
         return body.length() > name.length() ? body.substring(name.length()).trim() : "";
     }
 
@@ -254,10 +248,7 @@ public final class AssistantCommandParser {
     }
 
     private static boolean isHighlightableName(String name) {
-        return PAYLOAD_COMMANDS.contains(name)
-                || OPTIONAL_PAYLOAD_COMMANDS.contains(name)
-                || NO_PAYLOAD_COMMANDS.contains(name)
-                || "drugcache".equals(name);
+        return AssistantCommandRegistry.specFor(name) != null || "drugcache".equals(name);
     }
 
     private static boolean overlaps(List<Span> spans, int start, int end) {

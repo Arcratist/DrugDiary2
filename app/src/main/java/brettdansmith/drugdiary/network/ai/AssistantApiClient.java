@@ -75,7 +75,7 @@ public final class AssistantApiClient {
                 }
             }
             // Add other core providers as ultimate fallback if not already in list
-            AiProvider[] core = {AiProvider.OPENAI, AiProvider.GEMINI, AiProvider.ANTHROPIC};
+            AiProvider[] core = {AiProvider.OPENAI, AiProvider.GEMINI, AiProvider.ANTHROPIC, AiProvider.GROQ};
             for (AiProvider p : core) {
                 if (!providersToTry.contains(p)) {
                     providersToTry.add(p);
@@ -354,7 +354,7 @@ public final class AssistantApiClient {
                 continue;
             }
 
-            String content = msg.getContent() == null ? "" : msg.getContent();
+            String content = (msg.getContent() == null ? "" : msg.getContent()) + nonPrimaryAttachmentSummary(msg);
             if (isTextLikeAttachment(msg)) {
                 prepared.add(copyWithoutAttachment(msg, content + decodedTextAttachmentBlock(msg)));
             } else if (canSendNativeAttachment(mode, msg)) {
@@ -368,15 +368,32 @@ public final class AssistantApiClient {
 
     private static boolean canSendNativeAttachment(AttachmentMode mode, ChatMessage msg) {
         if (mode == null || msg == null || !msg.hasAttachment()) return false;
-        if (mode == AttachmentMode.GEMINI_NATIVE_MULTIMODAL) return canGeminiInline(msg);
+        if (mode == AttachmentMode.GEMINI_NATIVE_MULTIMODAL) {
+            for (ChatMessage.Attachment attachment : msg.getAttachments()) {
+                if (canGeminiInline(attachment)) return true;
+            }
+            return false;
+        }
         if (mode == AttachmentMode.OPENAI_NATIVE_IMAGE || mode == AttachmentMode.ANTHROPIC_NATIVE_IMAGE) {
-            return msg.hasImageAttachment();
+            for (ChatMessage.Attachment attachment : msg.getAttachments()) {
+                if (isImageAttachment(attachment)) return true;
+            }
+            return false;
         }
         return false;
     }
 
     private static boolean canGeminiInline(ChatMessage msg) {
         String mime = normalizedMime(msg);
+        return canGeminiInline(mime);
+    }
+
+    private static boolean canGeminiInline(ChatMessage.Attachment attachment) {
+        String mime = normalizedMime(attachment);
+        return canGeminiInline(mime);
+    }
+
+    private static boolean canGeminiInline(String mime) {
         return mime.startsWith("image/")
                 || mime.startsWith("audio/")
                 || mime.startsWith("video/")
@@ -399,32 +416,47 @@ public final class AssistantApiClient {
         return mime == null ? "" : mime.toLowerCase(Locale.US).trim();
     }
 
+    private static String normalizedMime(ChatMessage.Attachment attachment) {
+        String mime = attachment == null ? "" : attachment.mimeType;
+        return mime == null ? "" : mime.toLowerCase(Locale.US).trim();
+    }
+
+    private static boolean isImageAttachment(ChatMessage.Attachment attachment) {
+        return normalizedMime(attachment).startsWith("image/");
+    }
+
     private static ChatMessage copyWithoutAttachment(ChatMessage msg, String content) {
         return new ChatMessage(msg.getId(), content, msg.isSent(), msg.getCreatedAt());
     }
 
     private static Object buildOpenAiContent(ChatMessage msg, String text) throws Exception {
         if (msg == null || !msg.hasAttachment()) return text;
-        if (!msg.hasImageAttachment()) return text + attachmentTextFallback(msg);
+        List<ChatMessage.Attachment> imageAttachments = imageAttachments(msg);
+        if (imageAttachments.isEmpty()) return text + attachmentTextFallback(msg);
         JSONArray content = new JSONArray();
         content.put(new JSONObject().put("type", "text").put("text", text));
-        content.put(new JSONObject()
-                .put("type", "image_url")
-                .put("image_url", new JSONObject().put("url", dataUri(msg))));
+        for (ChatMessage.Attachment attachment : imageAttachments) {
+            content.put(new JSONObject()
+                    .put("type", "image_url")
+                    .put("image_url", new JSONObject().put("url", dataUri(attachment))));
+        }
         return content;
     }
 
     private static Object buildAnthropicContent(ChatMessage msg, String text) throws Exception {
         if (msg == null || !msg.hasAttachment()) return text;
-        if (!msg.hasImageAttachment()) return text + attachmentTextFallback(msg);
+        List<ChatMessage.Attachment> imageAttachments = imageAttachments(msg);
+        if (imageAttachments.isEmpty()) return text + attachmentTextFallback(msg);
         JSONArray content = new JSONArray();
         content.put(new JSONObject().put("type", "text").put("text", text));
-        content.put(new JSONObject()
-                .put("type", "image")
-                .put("source", new JSONObject()
-                        .put("type", "base64")
-                        .put("media_type", msg.getAttachmentMimeType())
-                        .put("data", msg.getAttachmentBase64())));
+        for (ChatMessage.Attachment attachment : imageAttachments) {
+            content.put(new JSONObject()
+                    .put("type", "image")
+                    .put("source", new JSONObject()
+                            .put("type", "base64")
+                            .put("media_type", attachment.mimeType)
+                            .put("data", attachment.base64)));
+        }
         return content;
     }
 
@@ -432,15 +464,23 @@ public final class AssistantApiClient {
         JSONArray parts = new JSONArray();
         parts.put(new JSONObject().put("text", text));
         if (msg != null && msg.hasAttachment()) {
-            parts.put(new JSONObject().put("inline_data", new JSONObject()
-                    .put("mime_type", msg.getAttachmentMimeType())
-                    .put("data", msg.getAttachmentBase64())));
+            for (ChatMessage.Attachment attachment : msg.getAttachments()) {
+                if (attachment == null) continue;
+                if (!canGeminiInline(attachment)) continue;
+                parts.put(new JSONObject().put("inline_data", new JSONObject()
+                        .put("mime_type", attachment.mimeType)
+                        .put("data", attachment.base64)));
+            }
         }
         return parts;
     }
 
     private static String dataUri(ChatMessage msg) {
         return "data:" + msg.getAttachmentMimeType() + ";base64," + msg.getAttachmentBase64();
+    }
+
+    private static String dataUri(ChatMessage.Attachment attachment) {
+        return "data:" + attachment.mimeType + ";base64," + attachment.base64;
     }
 
     private static String attachmentTextFallback(ChatMessage msg) {
@@ -466,9 +506,32 @@ public final class AssistantApiClient {
                 + "). " + providerName + " cannot directly read this attachment type in the current request path.]";
     }
 
+    private static String nonPrimaryAttachmentSummary(ChatMessage msg) {
+        if (msg == null || msg.getAttachments().size() <= 1) return "";
+        StringBuilder builder = new StringBuilder("\n\nAdditional attachments in this message:\n");
+        for (int i = 1; i < msg.getAttachments().size(); i++) {
+            ChatMessage.Attachment attachment = msg.getAttachments().get(i);
+            String name = attachment == null || attachment.name == null || attachment.name.trim().isEmpty()
+                    ? "attachment" : attachment.name.trim();
+            String mime = attachment == null || attachment.mimeType == null || attachment.mimeType.trim().isEmpty()
+                    ? "application/octet-stream" : attachment.mimeType.trim();
+            builder.append("- ").append(name).append(" (").append(mime).append(")\n");
+        }
+        return builder.toString().trim().isEmpty() ? "" : ("\n\n" + builder.toString().trim());
+    }
+
     private static String safeAttachmentName(ChatMessage msg) {
         String name = msg == null ? "" : msg.getAttachmentName();
         return name == null || name.trim().isEmpty() ? "attachment" : name.trim();
+    }
+
+    private static List<ChatMessage.Attachment> imageAttachments(ChatMessage msg) {
+        List<ChatMessage.Attachment> images = new ArrayList<>();
+        if (msg == null) return images;
+        for (ChatMessage.Attachment attachment : msg.getAttachments()) {
+            if (isImageAttachment(attachment)) images.add(attachment);
+        }
+        return images;
     }
 
     private static JSONArray buildAnthropicMessages(List<ChatMessage> messages) throws Exception {

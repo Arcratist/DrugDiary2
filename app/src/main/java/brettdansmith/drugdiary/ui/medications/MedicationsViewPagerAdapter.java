@@ -14,7 +14,7 @@ public class MedicationsViewPagerAdapter extends FragmentStateAdapter {
     @NonNull
     @Override
     public Fragment createFragment(int position) {
-        MedicationsViewModel.FilterMode[] modes = MedicationsViewModel.FilterMode.values();
+        MedicationListViewModel.FilterMode[] modes = MedicationListViewModel.FilterMode.values();
         if (position < 0 || position >= modes.length) {
             throw new IllegalStateException("Unexpected position: " + position);
         }
@@ -23,6 +23,6 @@ public class MedicationsViewPagerAdapter extends FragmentStateAdapter {
 
     @Override
     public int getItemCount() {
-        return MedicationsViewModel.FilterMode.values().length;
+        return MedicationListViewModel.FilterMode.values().length;
     }
 }

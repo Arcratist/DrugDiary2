@@ -16,188 +16,46 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingTop="16dp"
             android:paddingHorizontal="16dp"
-            app:layout_scrollFlags="scroll">
+            android:paddingTop="12dp"
+            android:paddingBottom="10dp">
 
-            <!-- Title -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_verified_shield"
+                    app:tint="?attr/colorPrimary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="Support Resources"
+                    android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Support Resources"
-                android:textAlignment="center"
-                android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginTop="4dp"
+                android:text="Registry-backed help for drug, overdose, poison, mental health, and suicide support."
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
 
-            <!-- Top Emergency Card -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.DrugDiary.Card"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                app:cardBackgroundColor="?attr/colorErrorContainer"
-                app:strokeColor="?attr/colorError">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Emergency, overdose, or immediate danger"
-                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                        android:textColor="?attr/colorOnErrorContainer"
-                        android:layout_marginBottom="8dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="If someone is unconscious, not breathing normally, having a seizure, has chest pain, blue/grey lips, severe confusion, extreme agitation, or you are seriously worried, call emergency services now."
-                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                        android:textColor="?attr/colorOnErrorContainer"
-                        android:layout_marginBottom="16dp"/>
-
-                    <!-- Phone numbers removed as requested -->
-
-                    <!-- Note removed as requested -->
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Quick Action Cards -->
-            <HorizontalScrollView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:scrollbars="none"
-                android:clipToPadding="false"
-                android:layout_marginBottom="16dp">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/card_action_overdose"
-                        style="@style/Widget.DrugDiary.Card"
-                        android:layout_width="160dp"
-                        android:layout_height="match_parent"
-                        android:layout_marginEnd="8dp">
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="12dp">
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Overdose / Poisoning"
-                                android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
-                                android:layout_marginBottom="4dp"/>
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Bad reaction, exposure, mix-up."
-                                android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/card_action_support"
-                        style="@style/Widget.DrugDiary.Card"
-                        android:layout_width="160dp"
-                        android:layout_height="match_parent"
-                        android:layout_marginEnd="8dp">
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="12dp">
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Drug/Alcohol Support"
-                                android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
-                                android:layout_marginBottom="4dp"/>
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Cutting down, stopping, withdrawal."
-                                android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/card_action_mental"
-                        style="@style/Widget.DrugDiary.Card"
-                        android:layout_width="160dp"
-                        android:layout_height="match_parent"
-                        android:layout_marginEnd="8dp">
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="12dp">
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Mental Health Crisis"
-                                android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
-                                android:layout_marginBottom="4dp"/>
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Panic, distress, suicidal thoughts."
-                                android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/card_action_recovery"
-                        style="@style/Widget.DrugDiary.Card"
-                        android:layout_width="160dp"
-                        android:layout_height="match_parent">
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="12dp">
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Recovery / Meetings"
-                                android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
-                                android:layout_marginBottom="4dp"/>
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Peer support, ongoing recovery."
-                                android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-
-                </LinearLayout>
-            </HorizontalScrollView>
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="16dp"
-            android:paddingBottom="8dp"
-            android:background="?android:attr/windowBackground">
-
-            <!-- Search Bar -->
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.DrugDiary.TextInputLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                app:startIconDrawable="@android:drawable/ic_menu_search"
-                android:hint="Search resources...">
+                android:layout_marginTop="10dp"
+                android:hint="Search services, regions, or classifications"
+                app:startIconDrawable="@android:drawable/ic_menu_search">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_search"
@@ -206,100 +64,44 @@
                     android:inputType="text" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Filter Chips -->
             <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
                 android:scrollbars="none">
 
                 <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/chipGroup_filters"
+                    android:id="@+id/chipGroup_region_filters"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    app:singleLine="true"
-                    app:singleSelection="true">
+                    app:singleSelection="true"
+                    app:selectionRequired="true">
 
                     <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_all"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="All"
                         android:checkable="true"
-                        android:checked="true"/>
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_global"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Global"
-                        android:checkable="true"/>
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_australia"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Australia"
-                        android:checkable="true"/>
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_us"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="United States"
-                        android:checkable="true"/>
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_uk"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="United Kingdom"
-                        android:checkable="true"/>
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_emergency"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Emergency"
-                        android:checkable="true"/>
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_poisoning"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Poisoning/Overdose"
-                        android:checkable="true"/>
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_drug"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Drug &amp; Alcohol"
-                        android:checkable="true"/>
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_mental"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Mental Health Crisis"
-                        android:checkable="true"/>
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_recovery"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Recovery"
-                        android:checkable="true"/>
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_family"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Family/Friends"
-                        android:checkable="true"/>
+                        android:checked="true"
+                        android:tag=""
+                        android:text="All Regions" />
+                    <com.google.android.material.chip.Chip android:layout_width="wrap_content" android:layout_height="wrap_content" android:checkable="true" android:tag="WORLDWIDE" android:text="Worldwide" />
+                    <com.google.android.material.chip.Chip android:layout_width="wrap_content" android:layout_height="wrap_content" android:checkable="true" android:tag="AU" android:text="AU" />
+                    <com.google.android.material.chip.Chip android:layout_width="wrap_content" android:layout_height="wrap_content" android:checkable="true" android:tag="US" android:text="US" />
+                    <com.google.android.material.chip.Chip android:layout_width="wrap_content" android:layout_height="wrap_content" android:checkable="true" android:tag="UK" android:text="UK" />
                 </com.google.android.material.chip.ChipGroup>
             </HorizontalScrollView>
-
         </LinearLayout>
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- Main List content -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_resources"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        android:paddingHorizontal="16dp"
         android:clipToPadding="false"
-        tools:listitem="@layout/item_support_resource"/>
+        android:paddingHorizontal="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        tools:listitem="@layout/item_support_resource" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

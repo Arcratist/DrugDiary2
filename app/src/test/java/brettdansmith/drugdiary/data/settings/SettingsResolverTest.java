@@ -18,7 +18,6 @@ public class SettingsResolverTest {
                 LanguageOption.SPANISH, // languageOverride
                 UnitSystem.IMPERIAL, // unitsOverride
                 true, // privateModeOverride
-                true, // hideDashboardSensitiveOverride
                 AiProvider.GEMINI, // preferredAiOverride
                 true, // aiProfileContext
                 false, // aiMedicationContext
@@ -31,7 +30,6 @@ public class SettingsResolverTest {
         assertEquals(LanguageOption.SPANISH, effective.language);
         assertEquals(UnitSystem.IMPERIAL, effective.unitSystem);
         assertTrue(effective.privateMode);
-        assertTrue(effective.hideDashboardSensitive);
         assertEquals(AiProvider.GEMINI, effective.aiProvider);
         assertTrue(effective.aiProfileContext);
         assertFalse(effective.aiMedicationContext);
@@ -50,7 +48,6 @@ public class SettingsResolverTest {
         UnitSystem expectedUnits = global.unitSystem == UnitSystem.SYSTEM ? UnitSystem.getSystemDefault() : global.unitSystem;
         assertEquals(expectedUnits, effective.unitSystem);
         assertEquals(global.privateMode, effective.privateMode);
-        assertEquals(global.hideDashboardSensitive, effective.hideDashboardSensitive);
         assertEquals(global.assistantProvider, effective.aiProvider);
         
         // AI context settings are now exclusively in user settings and default to true

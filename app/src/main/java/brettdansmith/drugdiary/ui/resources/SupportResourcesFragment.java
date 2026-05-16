@@ -8,6 +8,8 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.ListPopupWindow;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -15,6 +17,7 @@ import android.widget.Toast;
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
@@ -24,6 +27,8 @@ import com.google.android.material.card.MaterialCardView;
 
 import brettdansmith.drugdiary.R;
 import brettdansmith.drugdiary.databinding.FragmentSupportResourcesBinding;
+import brettdansmith.drugdiary.domain.model.resources.SupportResourceRegistry;
+import brettdansmith.drugdiary.ui.assistant.AssistantIntegration;
 
 /**
  * Local, privacy-preserving support hub.
@@ -172,9 +177,11 @@ public class SupportResourcesFragment extends Fragment {
         );
         askAiButton.setLayoutParams(askAiParams);
         askAiButton.setOnClickListener(v -> {
-            // Create a message to send to AI about this topic
-            String contextMessage = "I need information about: " + title + ". " + body;
-            navigate(R.id.assistantFragment);
+            AssistantIntegration.askAbout(SupportResourcesFragment.this, buildSectionPrompt(title, body), false, true);
+        });
+        askAiButton.setOnLongClickListener(v -> {
+            showAskAiPopup(v, title, body);
+            return true;
         });
 
         bottomBar.addView(askAiButton);
@@ -226,6 +233,28 @@ public class SupportResourcesFragment extends Fragment {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private String buildSectionPrompt(String title, String body) {
+        return SupportResourceRegistry.buildAssistantSuggestionContext(title + " " + body, null)
+                + " Section focus: " + title + ". " + body
+                + " Please provide practical, non-judgemental harm-minimisation guidance and next-step options.";
+    }
+
+    private void showAskAiPopup(View anchor, String title, String body) {
+        ListPopupWindow popup = new ListPopupWindow(requireContext());
+        popup.setAnchorView(anchor);
+        popup.setModal(true);
+        popup.setWidth(dp(210));
+        popup.setBackgroundDrawable(AppCompatResources.getDrawable(requireContext(), R.drawable.bg_assistant_popup));
+        popup.setAdapter(new ArrayAdapter<>(requireContext(), R.layout.item_command_suggestion, new String[]{"Ask in private chat"}));
+        popup.setOnItemClickListener((parent, view, position, id) -> {
+            if (position == 0) {
+                AssistantIntegration.askAbout(SupportResourcesFragment.this, buildSectionPrompt(title, body), true, true);
+            }
+            popup.dismiss();
+        });
+        popup.show();
     }
 
     @Override

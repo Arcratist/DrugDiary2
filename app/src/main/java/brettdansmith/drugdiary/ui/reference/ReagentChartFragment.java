@@ -8,12 +8,14 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import brettdansmith.drugdiary.databinding.FragmentReagentChartBinding;
-import brettdansmith.drugdiary.reference.ReagentReference;
+import brettdansmith.drugdiary.ui.common.ViewModelFactory;
 
 public class ReagentChartFragment extends Fragment {
     private FragmentReagentChartBinding binding;
+    private ReagentChartViewModel viewModel;
 
     @Nullable
     @Override
@@ -25,7 +27,15 @@ public class ReagentChartFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        binding.textReagentGuide.setText(ReagentReference.quickGuide());
+
+        viewModel = new ViewModelProvider(this, new ViewModelFactory(requireContext()))
+                .get(ReagentChartViewModel.class);
+
+        viewModel.getGuide().observe(getViewLifecycleOwner(), guide -> {
+            binding.textReagentGuide.setText(guide);
+        });
+
+        viewModel.loadGuide();
     }
 
     @Override

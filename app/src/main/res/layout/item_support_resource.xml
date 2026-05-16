@@ -5,140 +5,127 @@
     style="@style/Widget.DrugDiary.Card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp">
+    android:layout_marginBottom="12dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
-
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <TextView
-                android:id="@+id/tv_name"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@+id/chip_region"
-                app:layout_constraintHorizontal_bias="0.0"
-                app:layout_constraintHorizontal_chainStyle="spread_inside"
-                android:layout_marginEnd="8dp"
-                tools:text="Lifeline Australia" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chip_region"
-                style="@style/Widget.Material3.Chip.Assist"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Australia"
-                android:textSize="12sp"
-                app:chipMinHeight="24dp"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintStart_toEndOf="@+id/tv_name" />
-        </androidx.constraintlayout.widget.ConstraintLayout>
+        android:padding="14dp">
 
         <TextView
-            android:id="@+id/tv_category"
+            android:id="@+id/tv_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            android:textStyle="bold"
+            tools:text="Lifeline Australia" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chip_region"
+            style="@style/Widget.Material3.Chip.Assist"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            tools:text="AU" />
+
+        <TextView
+            android:id="@+id/tv_classification"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
             android:textColor="?attr/colorPrimary"
-            android:layout_marginBottom="8dp"
-            tools:text="MENTAL HEALTH CRISIS" />
+            tools:text="emergency, mental health crisis" />
 
         <TextView
             android:id="@+id/tv_description"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-            android:layout_marginBottom="8dp"
-            tools:text="24/7 crisis support and suicide prevention." />
+            tools:text="24/7 crisis and suicide prevention support." />
 
         <TextView
             android:id="@+id/tv_availability"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:layout_marginBottom="12dp"
             tools:text="Availability: 24/7" />
+
+        <TextView
+            android:id="@+id/tv_contact"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+            tools:text="Contacts: call 13 11 14 | message 0477 13 11 14" />
 
         <TextView
             android:id="@+id/tv_notes"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
             android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-            android:textColor="?attr/colorError"
-            android:layout_marginBottom="12dp"
-            android:visibility="gone"
-            tools:text="For life-threatening symptoms, call 911 immediately." />
+            android:textColor="?attr/colorOnSurfaceVariant"
+            tools:text="Immediate crisis support line." />
 
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
             android:scrollbars="none">
 
             <LinearLayout
-                android:id="@+id/layout_actions"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
-                <Button
-                    android:id="@+id/btn_phone"
-                    style="@style/Widget.Material3.Button.OutlinedButton.Icon"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:layout_marginBottom="8dp"
-                    android:text="Call"
-                    app:icon="@android:drawable/ic_menu_call"
-                    android:visibility="gone" />
-
-                <Button
-                    android:id="@+id/btn_sms"
-                    style="@style/Widget.Material3.Button.OutlinedButton.Icon"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:layout_marginBottom="8dp"
-                    android:text="Text"
-                    app:icon="@android:drawable/stat_notify_chat"
-                    android:visibility="gone" />
-
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_website"
-                    style="@style/Widget.Material3.Button.OutlinedButton.Icon"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:layout_marginEnd="8dp"
-                    android:layout_marginBottom="8dp"
-                    android:text="Website"
-                    app:icon="@android:drawable/ic_menu_info_details"
-                    android:visibility="gone" />
+                    android:contentDescription="Open website"
+                    app:icon="@android:drawable/ic_menu_view"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="18dp" />
 
-                <Button
-                    android:id="@+id/btn_meeting"
-                    style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_message"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="8dp"
+                    android:contentDescription="Send message"
+                    app:icon="@android:drawable/ic_dialog_email"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="18dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_call"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="8dp"
+                    android:contentDescription="Call service"
+                    app:icon="@android:drawable/ic_menu_call"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="18dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_ask_ai"
+                    style="@style/Widget.Material3.Button"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:layout_marginBottom="8dp"
-                    android:text="Meetings"
-                    app:icon="@android:drawable/ic_menu_myplaces"
-                    android:visibility="gone" />
+                    android:text="Ask AI" />
 
             </LinearLayout>
         </HorizontalScrollView>
-
     </LinearLayout>
-
 </com.google.android.material.card.MaterialCardView>

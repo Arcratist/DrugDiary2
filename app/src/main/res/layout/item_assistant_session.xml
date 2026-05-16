@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/layout_session_item"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="12dp">
+
+    <ImageView
+        android:id="@+id/image_session_icon"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:alpha="0.6"
+        android:src="@android:drawable/ic_menu_edit"
+        app:tint="?attr/colorOnSurface"
+        android:contentDescription="@null" />
+
+    <TextView
+        android:id="@+id/text_session_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:singleLine="true"
+        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+        android:textColor="?attr/colorOnSurface" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_delete_session"
+        style="@style/Widget.Material3.Button.IconButton"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:visibility="visible"
+        app:icon="@android:drawable/ic_menu_close_clear_cancel"
+        app:iconSize="16dp"
+        app:iconTint="?attr/colorOnSurfaceVariant" />
+
+</LinearLayout>

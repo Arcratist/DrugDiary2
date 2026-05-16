@@ -4,21 +4,267 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingVertical="2dp">
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="12dp">
 
-    <!-- System/Notification Message -->
+    <!-- User Message (Right Aligned Bubble) -->
+    <LinearLayout
+        android:id="@+id/layout_sent"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_sent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="48dp"
+            app:cardBackgroundColor="?attr/colorPrimary"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
+
+                <TextView
+                    android:id="@+id/text_sent"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                    android:textColor="?attr/colorOnPrimary" />
+
+                <LinearLayout
+                    android:id="@+id/layout_inline_edit"
+                    android:layout_width="240dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:background="@android:color/transparent"
+                    android:orientation="vertical"
+                    android:padding="0dp"
+                    android:visibility="gone">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/input_layout_inline_edit"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Edit message"
+                        app:boxBackgroundMode="outline"
+                        app:boxBackgroundColor="#1FFFFFFF"
+                        app:boxCornerRadiusTopStart="10dp"
+                        app:boxCornerRadiusTopEnd="10dp"
+                        app:boxCornerRadiusBottomStart="10dp"
+                        app:boxCornerRadiusBottomEnd="10dp"
+                        app:boxStrokeColor="#AAFFFFFF"
+                        app:boxStrokeWidth="1dp"
+                        app:boxStrokeWidthFocused="2dp"
+                        app:hintTextColor="#CCFFFFFF">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/edit_inline_message"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textMultiLine|textCapSentences"
+                            android:maxLines="8"
+                            android:minLines="2"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="8dp"
+                            android:textCursorDrawable="@drawable/assistant_inline_cursor"
+                            android:textColorHighlight="#331A73E8"
+                            android:textColor="?attr/colorOnPrimary"
+                            android:textColorHint="#CCFFFFFF" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <TextView
+                        android:id="@+id/text_edit_helper"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Replies after this message will be regenerated."
+                        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                        android:textColor="#CCFFFFFF" />
+
+                    <LinearLayout
+                        android:id="@+id/layout_inline_edit_attachments"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:orientation="vertical"
+                        android:visibility="gone" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:gravity="end"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/button_inline_cancel"
+                                style="@style/Widget.Material3.Button"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginEnd="4dp"
+                                android:minWidth="0dp"
+                                android:minHeight="26dp"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:paddingHorizontal="6dp"
+                                android:paddingVertical="0dp"
+                                android:text="Cancel"
+                                android:textAllCaps="false"
+                                android:textColor="#FFFFFFFF"
+                                app:backgroundTint="#FF2B2B2B" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/button_inline_update"
+                                style="@style/Widget.Material3.Button"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginEnd="4dp"
+                                android:minWidth="0dp"
+                                android:minHeight="26dp"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:paddingHorizontal="6dp"
+                                android:paddingVertical="0dp"
+                                android:text="Update"
+                                android:textAllCaps="false"
+                                android:textColor="#FFFFFFFF"
+                                app:backgroundTint="#FF2B2B2B" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/button_inline_branch"
+                                style="@style/Widget.Material3.Button"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:minWidth="0dp"
+                                android:minHeight="26dp"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:paddingHorizontal="6dp"
+                                android:paddingVertical="0dp"
+                                android:text="Branch"
+                                android:textAllCaps="false"
+                                android:textColor="#FFFFFFFF"
+                                app:backgroundTint="#FF2B2B2B" />
+                        </LinearLayout>
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/image_sent_attachment"
+                    android:layout_width="200dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:adjustViewBounds="true"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/layout_sent_attachments"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Message Actions (Edit/Delete) -->
+        <LinearLayout
+            android:id="@+id/layout_message_actions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_edit_message"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                app:icon="@android:drawable/ic_menu_edit"
+                app:iconSize="16dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_delete_message"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                app:icon="@android:drawable/ic_menu_delete"
+                app:iconSize="16dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- AI Message (Left Aligned, Minimalist) -->
+    <LinearLayout
+        android:id="@+id/layout_received"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="start"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <TextView
+                android:id="@+id/text_received"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="2dp"
+                android:paddingVertical="2dp"
+                android:lineSpacingExtra="4dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                android:textColor="?attr/colorOnSurface" />
+
+            <LinearLayout
+                android:id="@+id/layout_received_images"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical"
+                android:visibility="gone" />
+
+            <!-- Attachment Note -->
+            <TextView
+                android:id="@+id/text_received_attachment"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/assistant_attachment_chip_bg"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:visibility="gone" />
+
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- System/Command Message -->
     <LinearLayout
         android:id="@+id/layout_system"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
-        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginVertical="8dp"
         android:visibility="gone">
 
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_system"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="32dp"
             app:cardBackgroundColor="?attr/colorSecondaryContainer"
             app:cardCornerRadius="16dp"
             app:cardElevation="0dp">
@@ -27,221 +273,42 @@
                 android:id="@+id/text_system"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="7dp"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="6dp"
                 android:textAlignment="center"
                 android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                android:textIsSelectable="true"
                 android:textColor="?attr/colorOnSecondaryContainer" />
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 
-    <!-- Received Message -->
-    <LinearLayout
-        android:id="@+id/layout_received"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="start"
-        android:paddingVertical="5dp"
-        android:visibility="gone">
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardBackgroundColor="?android:attr/windowBackground"
-            app:cardCornerRadius="0dp"
-            app:cardElevation="0dp"
-            app:strokeWidth="0dp">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingHorizontal="2dp"
-                android:paddingVertical="8dp">
-
-                <TextView
-                    android:id="@+id/text_received"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:lineSpacingExtra="2dp"
-                    android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
-                    android:textIsSelectable="true"
-                    android:textColor="?attr/colorOnSurface" />
-
-                <TextView
-                    android:id="@+id/text_received_attachment"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:background="@drawable/assistant_attachment_chip_bg"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="8dp"
-                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                    android:textIsSelectable="true"
-                    android:visibility="gone" />
-
-                <ImageView
-                    android:id="@+id/image_received"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:adjustViewBounds="true"
-                    android:contentDescription="@string/command_image_result"
-                    android:scaleType="fitCenter"
-                    android:visibility="gone" />
-
-                <ImageView
-                    android:id="@+id/image_received_secondary"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:adjustViewBounds="true"
-                    android:contentDescription="@string/additional_command_image_result"
-                    android:scaleType="fitCenter"
-                    android:visibility="gone" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-    </LinearLayout>
-
-    <!-- Sent Message -->
-    <LinearLayout
-        android:id="@+id/layout_sent"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="end"
-        android:paddingVertical="5dp"
-        android:visibility="gone">
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="56dp"
-            app:cardBackgroundColor="?attr/colorSurfaceVariant"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="0dp">
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/text_sent"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="14dp"
-                    android:paddingVertical="10dp"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textIsSelectable="true"
-                    android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
-
-                <TextView
-                    android:id="@+id/text_sent_attachment"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingHorizontal="14dp"
-                    android:paddingBottom="10dp"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                    android:textIsSelectable="true"
-                    android:visibility="gone" />
-
-                <ImageView
-                    android:id="@+id/image_sent_attachment"
-                    android:layout_width="220dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="10dp"
-                    android:layout_marginBottom="10dp"
-                    android:adjustViewBounds="true"
-                    android:contentDescription="@string/attach_image"
-                    android:scaleType="centerCrop"
-                    android:visibility="gone" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-    </LinearLayout>
-
-    <!-- Local Command Response -->
+    <!-- Local Tool Result -->
     <LinearLayout
         android:id="@+id/layout_command"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
-        android:orientation="horizontal"
+        android:orientation="vertical"
+        android:layout_marginTop="8dp"
         android:visibility="gone">
 
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_command"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            app:cardBackgroundColor="?attr/colorPrimaryContainer"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant"
             app:cardCornerRadius="12dp"
-            app:cardElevation="0dp">
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="?attr/colorOutlineVariant">
 
-            <LinearLayout
+            <TextView
+                android:id="@+id/text_command"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
-
-                <TextView
-                    android:id="@+id/text_command"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                    android:textIsSelectable="true"
-                    android:textColor="?attr/colorOnPrimaryContainer" />
-
-                <ImageView
-                    android:id="@+id/image_command"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_marginTop="8dp"
-                    android:adjustViewBounds="true"
-                    android:contentDescription="@string/command_image_result"
-                    android:scaleType="fitCenter"
-                    android:visibility="gone" />
-
-                <ImageView
-                    android:id="@+id/image_command_secondary"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_marginTop="8dp"
-                    android:adjustViewBounds="true"
-                    android:contentDescription="@string/additional_command_image_result"
-                    android:scaleType="fitCenter"
-                    android:visibility="gone" />
-            </LinearLayout>
+                android:padding="12dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:fontFamily="monospace" />
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 
-    <LinearLayout
-        android:id="@+id/layout_message_actions"
-        android:layout_width="match_parent"
-        android:layout_height="30dp"
-        android:gravity="end|center_vertical"
-        android:orientation="horizontal"
-        android:paddingHorizontal="8dp"
-        android:visibility="gone">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_edit_message"
-            style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="36dp"
-            android:layout_height="32dp"
-            android:contentDescription="@string/edit_message"
-            app:icon="@android:drawable/ic_menu_edit" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_delete_message"
-            style="@style/Widget.Material3.Button.IconButton"
-            android:layout_width="36dp"
-            android:layout_height="32dp"
-            android:contentDescription="@string/delete_message"
-            app:icon="@android:drawable/ic_menu_delete" />
-    </LinearLayout>
-
 </LinearLayout>
-
-
-

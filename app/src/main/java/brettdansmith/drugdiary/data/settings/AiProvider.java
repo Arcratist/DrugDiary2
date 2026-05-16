@@ -1,15 +1,15 @@
 package brettdansmith.drugdiary.data.settings;
 
 public enum AiProvider {
-    OPENAI("openai", "ChatGPT (OpenAI)", "gpt-4o-mini"),
-    ANTHROPIC("anthropic", "Claude (Anthropic)", "claude-3-5-sonnet-latest"),
-    GEMINI("gemini", "Gemini (Google)", "gemini-1.5-flash"),
-    DEEPSEEK("deepseek", "DeepSeek", "deepseek-chat"),
+    OPENAI("openai", "ChatGPT (OpenAI)", "gpt-5.2"),
+    ANTHROPIC("anthropic", "Claude (Anthropic)", "claude-opus-4-20250514"),
+    GEMINI("gemini", "Gemini (Google)", "gemini-2.5-pro"),
+    DEEPSEEK("deepseek", "DeepSeek", "deepseek-reasoner"),
     XAI("xai", "Grok (xAI)", "grok-2-1212"),
-    GROQ("groq", "Groq", "llama-3.3-70b-versatile"),
+    GROQ("groq", "Groq", "llama-4-scout-17b-16e-instruct"),
     MISTRAL("mistral", "Mistral AI", "mistral-large-latest"),
-    PERPLEXITY("perplexity", "Perplexity Sonar", "sonar"),
-    OPENROUTER("openrouter", "OpenRouter (All Models)", "meta-llama/llama-3.3-70b-instruct");
+    PERPLEXITY("perplexity", "Perplexity Sonar", "sonar-pro"),
+    OPENROUTER("openrouter", "OpenRouter (All Models)", "openai/gpt-5");
 
     private final String preferenceValue;
     private final String displayName;
@@ -42,4 +42,3 @@ public enum AiProvider {
         return OPENAI;
     }
 }
-

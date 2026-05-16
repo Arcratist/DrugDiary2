@@ -15,157 +15,123 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.google.android.material.chip.Chip;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Locale;
 
 import brettdansmith.drugdiary.databinding.FragmentResourcesBinding;
-import brettdansmith.drugdiary.domain.model.resources.ResourceCategory;
+import brettdansmith.drugdiary.domain.model.resources.ResourceRegion;
 import brettdansmith.drugdiary.domain.model.resources.SupportResource;
-import brettdansmith.drugdiary.domain.model.resources.SupportResourceProvider;
+import brettdansmith.drugdiary.domain.model.resources.SupportResourceRegistry;
+import brettdansmith.drugdiary.ui.assistant.AssistantIntegration;
 
 public class ResourcesFragment extends Fragment {
     private FragmentResourcesBinding binding;
     private SupportResourceAdapter adapter;
-    private List<SupportResource> allResources;
 
-    private String currentSearchQuery = "";
-    private String currentFilter = null; // Can be region or category
-
-    private View root;
+    private String query = "";
+    private ResourceRegion selectedRegion = null;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        if (root == null) {
-            binding = FragmentResourcesBinding.inflate(inflater, container, false);
-            root = binding.getRoot();
-        }
-        return root;
+        binding = FragmentResourcesBinding.inflate(inflater, container, false);
+        return binding.getRoot();
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
-        if (adapter != null) {
-            return; // Already initialized
-        }
-
-        adapter = new SupportResourceAdapter();
+        adapter = new SupportResourceAdapter((resource, privateChat) -> {
+            String prompt = SupportResourceRegistry.buildAssistantSuggestionContext(query, selectedRegion)
+                    + " Selected resource: "
+                    + SupportResourceRegistry.buildAssistantContext(resource);
+            AssistantIntegration.askAbout(this, prompt, privateChat);
+        });
         binding.recyclerResources.setLayoutManager(new LinearLayoutManager(requireContext()));
-        binding.recyclerResources.setHasFixedSize(true);
         binding.recyclerResources.setAdapter(adapter);
 
-        // Defer heavy list/UI operations using postDelayed to guarantee the Fragment 
-        // enter animation finishes completely before we freeze the main thread with RecyclerView inflation.
-        view.postDelayed(() -> {
-            if (binding == null) return;
-            allResources = SupportResourceProvider.getResources();
-            setupSearch();
-            setupFilters();
-            setupQuickActions();
-            filterList();
-        }, 150); // 150ms delay for UI transition to complete
+        bindSearch();
+        bindFilters();
+        applyFilters();
     }
 
-    private void setupFilters() {
-        binding.chipGroupFilters.setOnCheckedStateChangeListener((group, checkedIds) -> {
-            if (checkedIds.isEmpty()) {
-                currentFilter = null;
-            } else {
-                Chip chip = group.findViewById(checkedIds.get(0));
-                if (chip != null) {
-                    String text = chip.getText().toString();
-                    currentFilter = text.equals("All") ? null : text;
-                }
-            }
-            filterList();
-        });
-    }
-
-    private void setupSearch() {
+    private void bindSearch() {
         binding.etSearch.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override
-            public void afterTextChanged(Editable s) {
-                currentSearchQuery = s.toString().toLowerCase();
-                filterList();
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(Editable s) {
+                query = s == null ? "" : s.toString();
+                applyFilters();
             }
         });
     }
 
-    private void setupQuickActions() {
-        binding.cardActionOverdose.setOnClickListener(v -> setFilter("Poisoning/Overdose"));
-        binding.cardActionSupport.setOnClickListener(v -> setFilter("Drug & Alcohol"));
-        binding.cardActionMental.setOnClickListener(v -> setFilter("Mental Health Crisis"));
-        binding.cardActionRecovery.setOnClickListener(v -> setFilter("Recovery"));
+    private void bindFilters() {
+        binding.chipGroupRegionFilters.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            selectedRegion = parseRegionFromChip(group, checkedIds);
+            applyFilters();
+        });
     }
 
-    private void setFilter(String filterText) {
-        for (int i = 0; i < binding.chipGroupFilters.getChildCount(); i++) {
-            Chip chip = (Chip) binding.chipGroupFilters.getChildAt(i);
-            if (chip.getText().toString().equals(filterText)) {
-                chip.setChecked(true);
-                break;
-            }
+    private ResourceRegion parseRegionFromChip(com.google.android.material.chip.ChipGroup group, List<Integer> checkedIds) {
+        if (checkedIds == null || checkedIds.isEmpty()) return null;
+        Chip chip = group.findViewById(checkedIds.get(0));
+        if (chip == null || chip.getTag() == null) return null;
+        String tag = chip.getTag().toString().trim();
+        if (tag.isEmpty()) return null;
+        try {
+            return ResourceRegion.valueOf(tag);
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
     }
 
-    private void filterList() {
-        List<SupportResource> filtered = allResources.stream()
-                .filter(this::matchesSearch)
-                .filter(this::matchesFilter)
-                .sorted((r1, r2) -> {
-                    if (r1.getCategories().isEmpty() && r2.getCategories().isEmpty()) return 0;
-                    if (r1.getCategories().isEmpty()) return 1;
-                    if (r2.getCategories().isEmpty()) return -1;
-                    return r1.getCategories().get(0).compareTo(r2.getCategories().get(0));
-                })
-                .collect(Collectors.toList());
+    private void applyFilters() {
+        List<SupportResource> filtered = new ArrayList<>(
+                SupportResourceRegistry.search(query, selectedRegion, null));
+        Collections.sort(filtered, resourceComparator());
         adapter.submitList(filtered);
     }
 
-    private boolean matchesSearch(SupportResource resource) {
-        if (currentSearchQuery.isEmpty()) return true;
-        
-        return (resource.getName() != null && resource.getName().toLowerCase().contains(currentSearchQuery)) ||
-               (resource.getDescription() != null && resource.getDescription().toLowerCase().contains(currentSearchQuery)) ||
-               (resource.getRegion() != null && resource.getRegion().toLowerCase().contains(currentSearchQuery));
+    private Comparator<SupportResource> resourceComparator() {
+        final String q = query == null ? "" : query.trim().toLowerCase(Locale.US);
+        return (a, b) -> {
+            int c = Integer.compare(queryScore(b, q), queryScore(a, q));
+            if (c != 0) return c;
+
+            c = Integer.compare(regionRank(a), regionRank(b));
+            if (c != 0) return c;
+
+            return a.getName().compareToIgnoreCase(b.getName());
+        };
     }
 
-    private boolean matchesFilter(SupportResource resource) {
-        if (currentFilter == null) return true;
+    private int queryScore(SupportResource resource, String q) {
+        if (q.isEmpty()) return 0;
+        String name = resource.getName() == null ? "" : resource.getName().toLowerCase(Locale.US);
+        String description = resource.getDescription() == null ? "" : resource.getDescription().toLowerCase(Locale.US);
+        if (name.startsWith(q)) return 3;
+        if (name.contains(q)) return 2;
+        if (description.contains(q)) return 1;
+        return 0;
+    }
 
-        if (currentFilter.equals("Global") || currentFilter.equals("Australia") || 
-            currentFilter.equals("United States") || currentFilter.equals("United Kingdom")) {
-            return resource.getRegion() != null && resource.getRegion().contains(currentFilter);
-        }
-
-        switch (currentFilter) {
-            case "Emergency":
-                return resource.getCategories().contains(ResourceCategory.EMERGENCY);
-            case "Poisoning/Overdose":
-                return resource.getCategories().contains(ResourceCategory.POISONING_OVERDOSE);
-            case "Drug & Alcohol":
-                return resource.getCategories().contains(ResourceCategory.DRUG_ALCOHOL);
-            case "Mental Health Crisis":
-                return resource.getCategories().contains(ResourceCategory.MENTAL_HEALTH_CRISIS);
-            case "Recovery":
-                return resource.getCategories().contains(ResourceCategory.RECOVERY_MEETINGS);
-            case "Family/Friends":
-                return resource.getCategories().contains(ResourceCategory.FAMILY_FRIENDS);
-            default:
-                return true;
+    private int regionRank(SupportResource resource) {
+        if (resource == null || resource.getRegion() == null) return 99;
+        switch (resource.getRegion()) {
+            case WORLDWIDE: return 0;
+            case AU: return 1;
+            case US: return 2;
+            case UK: return 3;
+            default: return 99;
         }
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // Do not set binding to null, because we are caching the root view!
+        binding = null;
     }
 }

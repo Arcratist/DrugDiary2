@@ -39,7 +39,6 @@ public final class AppSettings {
     public static final String PREF_AI_FALLBACK_ENABLED = SettingsRepository.PREF_AI_FALLBACK_ENABLED;
     public static final String PREF_AI_FALLBACK_ORDER = SettingsRepository.PREF_AI_FALLBACK_ORDER;
     public static final String PREF_PRIVATE_MODE = SettingsRepository.PREF_PRIVATE_MODE;
-    public static final String PREF_HIDE_DASHBOARD_SENSITIVE = SettingsRepository.PREF_HIDE_DASHBOARD_SENSITIVE;
 
     private AppSettings() {
     }
@@ -78,10 +77,6 @@ public final class AppSettings {
 
     public static boolean privateModeEnabled(Context context) {
         return effective(context).privateMode;
-    }
-
-    public static boolean hideDashboardSensitive(Context context) {
-        return effective(context).hideDashboardSensitive;
     }
 
     public static boolean defaultSixDigitPin(Context context) {

@@ -21,8 +21,7 @@ public final class SettingsResolver {
                     globalState.themeMode,
                     globalState.language,
                     resolvedUnits,
-                    globalState.privateMode,
-                    globalState.hideDashboardSensitive
+                    globalState.privateMode
             );
         }
 

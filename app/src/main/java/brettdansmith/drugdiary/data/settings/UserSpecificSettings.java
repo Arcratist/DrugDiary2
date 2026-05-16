@@ -14,7 +14,6 @@ public final class UserSpecificSettings {
     @Nullable public final LanguageOption languageOverride;
     @Nullable public final UnitSystem unitsOverride;
     @Nullable public final Boolean privateModeOverride;
-    @Nullable public final Boolean hideDashboardSensitiveOverride;
     @Nullable public final AiProvider preferredAiOverride;
     
     // AI context settings are profile-only
@@ -26,9 +25,8 @@ public final class UserSpecificSettings {
             @Nullable Integer themeOverride,
             @Nullable LanguageOption languageOverride,
             @Nullable UnitSystem unitsOverride,
-            @Nullable Boolean privateModeOverride,
-            @Nullable Boolean hideDashboardSensitiveOverride) {
-        this(themeOverride, languageOverride, unitsOverride, privateModeOverride, hideDashboardSensitiveOverride, null, true, true, true);
+            @Nullable Boolean privateModeOverride) {
+        this(themeOverride, languageOverride, unitsOverride, privateModeOverride, null, true, true, true);
     }
 
     public UserSpecificSettings(
@@ -36,9 +34,8 @@ public final class UserSpecificSettings {
             @Nullable LanguageOption languageOverride,
             @Nullable UnitSystem unitsOverride,
             @Nullable Boolean privateModeOverride,
-            @Nullable Boolean hideDashboardSensitiveOverride,
             @Nullable AiProvider preferredAiOverride) {
-        this(themeOverride, languageOverride, unitsOverride, privateModeOverride, hideDashboardSensitiveOverride, preferredAiOverride, true, true, true);
+        this(themeOverride, languageOverride, unitsOverride, privateModeOverride, preferredAiOverride, true, true, true);
     }
 
     public UserSpecificSettings(
@@ -46,7 +43,6 @@ public final class UserSpecificSettings {
             @Nullable LanguageOption languageOverride,
             @Nullable UnitSystem unitsOverride,
             @Nullable Boolean privateModeOverride,
-            @Nullable Boolean hideDashboardSensitiveOverride,
             @Nullable AiProvider preferredAiOverride,
             boolean aiProfileContext,
             boolean aiMedicationContext,
@@ -55,7 +51,6 @@ public final class UserSpecificSettings {
         this.languageOverride = languageOverride;
         this.unitsOverride = unitsOverride;
         this.privateModeOverride = privateModeOverride;
-        this.hideDashboardSensitiveOverride = hideDashboardSensitiveOverride;
         this.preferredAiOverride = preferredAiOverride;
         this.aiProfileContext = aiProfileContext;
         this.aiMedicationContext = aiMedicationContext;
@@ -63,7 +58,7 @@ public final class UserSpecificSettings {
     }
 
     public static UserSpecificSettings empty() {
-        return new UserSpecificSettings(null, null, null, null, null, null, true, true, true);
+        return new UserSpecificSettings(null, null, null, null, null, true, true, true);
     }
 
     public JSONObject toJson() throws JSONException {
@@ -72,7 +67,6 @@ public final class UserSpecificSettings {
         if (languageOverride != null) json.put("language", languageOverride.languageTag());
         if (unitsOverride != null) json.put("units", unitsOverride.preferenceValue());
         if (privateModeOverride != null) json.put("private_mode", (boolean) privateModeOverride);
-        if (hideDashboardSensitiveOverride != null) json.put("hide_sensitive", (boolean) hideDashboardSensitiveOverride);
         if (preferredAiOverride != null) json.put("preferred_ai", preferredAiOverride.preferenceValue());
         
         json.put("ai_profile_context", aiProfileContext);
@@ -90,7 +84,6 @@ public final class UserSpecificSettings {
         String unitPref = json.optString("units", null);
         UnitSystem units = (unitPref != null) ? UnitSystem.fromPreference(unitPref) : null;
         Boolean privateMode = json.has("private_mode") ? json.optBoolean("private_mode") : null;
-        Boolean hideSensitive = json.has("hide_sensitive") ? json.optBoolean("hide_sensitive") : null;
         String aiPref = json.optString("preferred_ai", null);
         AiProvider preferredAi = (aiPref != null) ? AiProvider.fromPreference(aiPref) : null;
         if (aiPref == null) preferredAi = null;
@@ -99,6 +92,6 @@ public final class UserSpecificSettings {
         boolean aiMedication = json.optBoolean("ai_medication_context", true);
         boolean aiLog = json.optBoolean("ai_log_context", true);
         
-        return new UserSpecificSettings(theme, lang, units, privateMode, hideSensitive, preferredAi, aiProfile, aiMedication, aiLog);
+        return new UserSpecificSettings(theme, lang, units, privateMode, preferredAi, aiProfile, aiMedication, aiLog);
     }
 }

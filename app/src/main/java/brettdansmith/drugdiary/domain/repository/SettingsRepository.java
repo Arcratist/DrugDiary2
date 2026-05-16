@@ -1,7 +1,12 @@
 package brettdansmith.drugdiary.domain.repository;
 
 import brettdansmith.drugdiary.data.settings.AiProvider;
+import brettdansmith.drugdiary.data.settings.LanguageOption;
 import brettdansmith.drugdiary.data.settings.ProviderSettings;
+import brettdansmith.drugdiary.data.settings.SettingsState;
+import brettdansmith.drugdiary.data.settings.UnitSystem;
+import brettdansmith.drugdiary.data.settings.UserSpecificSettings;
+import android.content.Context;
 
 /**
  * Repository interface for managing settings.
@@ -9,75 +14,140 @@ import brettdansmith.drugdiary.data.settings.ProviderSettings;
  */
 public interface SettingsRepository {
     /**
-     * Gets the current theme setting.
-     *
-     * @return theme identifier
+     * Gets the current global settings state.
      */
-    int getTheme();
+    SettingsState getGlobalState();
+
+    /**
+     * Gets the user-specific settings.
+     */
+    UserSpecificSettings getUserSpecificSettings();
 
     /**
      * Sets the application theme.
-     *
-     * @param theme the theme to set
      */
     void setTheme(int theme);
 
     /**
-     * Gets provider settings for a specific AI provider.
-     *
-     * @param provider the AI provider
-     * @return provider settings
+     * Sets the application language.
      */
-    ProviderSettings getProviderSettings(AiProvider provider);
+    void setLanguage(LanguageOption language);
 
     /**
-     * Updates API key for a provider.
-     *
-     * @param provider the AI provider
-     * @param apiKey the API key
+     * Sets the unit system.
      */
-    void setProviderApiKey(AiProvider provider, String apiKey);
+    void setUnitSystem(UnitSystem unitSystem);
 
     /**
-     * Gets the current AI provider.
-     *
-     * @return the AI provider
-     */
-    AiProvider getAiProvider();
-
-    /**
-     * Sets the current AI provider.
-     *
-     * @param provider the AI provider to set
+     * Sets AI provider.
      */
     void setAiProvider(AiProvider provider);
 
     /**
-     * Checks if AI web search is enabled.
-     *
-     * @return true if enabled
-     */
-    boolean isAiWebSearchEnabled();
-
-    /**
-     * Sets AI web search enabled state.
-     *
-     * @param enabled the enabled state
+     * Sets AI web search enabled.
      */
     void setAiWebSearchEnabled(boolean enabled);
 
     /**
-     * Checks if private mode is enabled.
-     *
-     * @return true if enabled
-     */
-    boolean isPrivateModeEnabled();
-
-    /**
-     * Sets private mode enabled state.
-     *
-     * @param enabled the enabled state
+     * Sets private mode enabled.
      */
     void setPrivateModeEnabled(boolean enabled);
+
+    /**
+     * Sets provider API key.
+     */
+    void setProviderApiKey(AiProvider provider, String apiKey);
+
+    /**
+     * Sets provider model.
+     */
+    void setProviderModel(AiProvider provider, String model);
+
+    /**
+     * Sets notifications enabled.
+     */
+    void setNotificationsEnabled(boolean enabled);
+
+    /**
+     * Sets stealth notifications.
+     */
+    void setStealthNotifications(boolean enabled);
+
+    /**
+     * Sets assistant response notifications.
+     */
+    void setAssistantResponseNotifications(boolean enabled);
+    void setAssistantEntryFromShareEnabled(boolean enabled);
+    void setAssistantEntryFromTextSelectionEnabled(boolean enabled);
+
+    /**
+     * Sets assistant memory.
+     */
+    void setAssistantMemory(boolean enabled);
+
+    /**
+     * Sets citations required.
+     */
+    void setAiCitationsRequired(boolean enabled);
+
+    /**
+     * Sets fallback enabled.
+     */
+    void setAiFallbackEnabled(boolean enabled);
+
+    /**
+     * Resets all app data.
+     */
+    void resetAllAppData(Context context);
+
+    /**
+     * Sets user theme override.
+     */
+    void setUserThemeOverride(Integer theme);
+
+    /**
+     * Sets user preferred AI override.
+     */
+    void setPreferredAiOverride(AiProvider provider);
+
+    /**
+     * Sets user language override.
+     */
+    void setLanguageOverride(LanguageOption language);
+
+    /**
+     * Sets user units override.
+     */
+    void setUnitsOverride(UnitSystem units);
+
+    /**
+     * Sets user private mode override.
+     */
+    void setPrivateModeOverride(Boolean enabled);
+
+    /**
+     * Sets user AI profile context inclusion.
+     */
+    void setUserAiProfileContext(boolean enabled);
+
+    /**
+     * Sets user AI medication context inclusion.
+     */
+    void setUserAiMedicationContext(boolean enabled);
+
+    /**
+     * Sets user AI log context inclusion.
+     */
+    void setUserAiLogContext(boolean enabled);
+
+    /**
+     * Gets provider settings.
+     */
+    ProviderSettings getProviderSettings(AiProvider provider);
+
+    /**
+     * Gets application context.
+     */
+    Context getContext();
 }
 

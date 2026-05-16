@@ -46,7 +46,14 @@ public class ResourcesViewModel extends ViewModel {
     /**
      * Loads all support resources.
      */
-    private void loadResources() {
+    public void loadResources() {
+        loadResourcesInternal();
+    }
+
+    /**
+     * Internal method to load resources.
+     */
+    private void loadResourcesInternal() {
         loadingLiveData.setValue(true);
         new Thread(() -> {
             try {

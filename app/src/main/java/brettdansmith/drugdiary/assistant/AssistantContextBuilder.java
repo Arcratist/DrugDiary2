@@ -15,12 +15,14 @@ import brettdansmith.drugdiary.data.settings.LanguageOption;
 import brettdansmith.drugdiary.data.settings.SettingsState;
 import brettdansmith.drugdiary.domain.units.UnitConverter;
 import brettdansmith.drugdiary.domain.units.UnitPreferences;
+import brettdansmith.drugdiary.domain.assistant.AssistantCommandRegistry;
 import brettdansmith.drugdiary.domain.model.diary.DiaryEntry;
 import brettdansmith.drugdiary.domain.model.medication.MedicationRecord;
 import brettdansmith.drugdiary.ui.assistant.ChatMessage;
 import brettdansmith.drugdiary.settings.AppSettings;
 
 public final class AssistantContextBuilder {
+    private static final int MAX_CONTEXT_CHARS = 18_000;
     private AssistantContextBuilder() {}
 
     public static boolean isProfileContextEnabled(JSONObject vaultData) {
@@ -43,7 +45,7 @@ public final class AssistantContextBuilder {
 
     public static String buildPlainText(Context context, JSONObject vaultData, List<ChatMessage> requestMessages) {
         EffectiveSettings effective = context == null 
-            ? new EffectiveSettings(0, LanguageOption.SYSTEM, brettdansmith.drugdiary.data.settings.UnitSystem.METRIC, false, false) 
+            ? new EffectiveSettings(0, LanguageOption.SYSTEM, brettdansmith.drugdiary.data.settings.UnitSystem.METRIC, false)
             : AppSettings.effective(context);
             
         boolean includeProfile = effective.aiProfileContext;
@@ -114,7 +116,45 @@ public final class AssistantContextBuilder {
             appendArray(text, reminders);
         }
 
-        return text.toString().trim();
+        appendRecentCommandContext(text, requestMessages);
+        appendToolCatalog(text);
+        return trimContext(text.toString().trim());
+    }
+
+    private static void appendToolCatalog(StringBuilder sb) {
+        sb.append("\n").append(AssistantCommandRegistry.contextToolCatalogText());
+    }
+
+    private static void appendRecentCommandContext(StringBuilder text, List<ChatMessage> requestMessages) {
+        text.append("recent_command_context:\n");
+        if (requestMessages == null || requestMessages.isEmpty()) {
+            text.append("- None\n");
+            return;
+        }
+        int appended = 0;
+        for (int i = requestMessages.size() - 1; i >= 0 && appended < 6; i--) {
+            ChatMessage message = requestMessages.get(i);
+            if (message == null) continue;
+            String content = message.getContent();
+            if (content == null) continue;
+            String trimmed = content.trim();
+            if (trimmed.isEmpty()) continue;
+
+            if (message.isSent() && trimmed.startsWith("/")) {
+                text.append("- command: ").append(oneLine(trimmed)).append("\n");
+                appended++;
+                continue;
+            }
+
+            if (!message.isSent() && trimmed.startsWith("[[command-response]]")) {
+                String output = trimmed.substring("[[command-response]]".length()).trim();
+                text.append("- command_output: ").append(oneLine(output)).append("\n");
+                appended++;
+            }
+        }
+        if (appended == 0) {
+            text.append("- None\n");
+        }
     }
 
     private static void appendField(StringBuilder text, String label, String value) {
@@ -220,6 +260,19 @@ public final class AssistantContextBuilder {
         if (language == LanguageOption.ENGLISH) return "English";
         if (language == LanguageOption.SPANISH) return "Spanish";
         return "System default";
+    }
+
+    private static String oneLine(String value) {
+        String safe = value == null ? "" : value.replace('\n', ' ').replace('\r', ' ').trim();
+        if (safe.length() > 220) safe = safe.substring(0, 220) + "...";
+        return safe;
+    }
+
+    private static String trimContext(String context) {
+        if (context == null) return "";
+        if (context.length() <= MAX_CONTEXT_CHARS) return context;
+        String prefix = context.substring(0, Math.min(context.length(), MAX_CONTEXT_CHARS));
+        return prefix + "\n[context truncated for efficiency]";
     }
 
 }

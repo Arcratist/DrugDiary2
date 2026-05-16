@@ -20,11 +20,14 @@ import com.google.android.material.tabs.TabLayoutMediator;
 import brettdansmith.drugdiary.R;
 import brettdansmith.drugdiary.data.medication.MedicationRepository;
 import brettdansmith.drugdiary.databinding.FragmentMedicationsBinding;
+import brettdansmith.drugdiary.ui.common.ViewModelFactory;
+import brettdansmith.drugdiary.ui.medications.MedicationListViewModel;
+import android.widget.Toast;
 
 public class MedicationsFragment extends Fragment {
 
     private FragmentMedicationsBinding binding;
-    private MedicationsViewModel viewModel;
+    private MedicationListViewModel viewModel;
     private MedicationsViewPagerAdapter viewPagerAdapter;
 
     @Nullable
@@ -38,17 +41,30 @@ public class MedicationsFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        viewModel = new ViewModelProvider(requireActivity()).get(MedicationsViewModel.class);
-        viewModel.setApplicationContext(requireContext().getApplicationContext());
+        viewModel = new ViewModelProvider(requireActivity(), new ViewModelFactory(requireContext()))
+                .get(MedicationListViewModel.class);
 
         setupViewPager();
         setupTabs();
         setupToolbar();
+        observeViewModel();
 
         binding.fabAddMedication.setOnClickListener(v ->
-                MedicationEditorDialog.showAdd(requireContext(), viewModel.getNetworkExecutor(), () -> viewModel.loadMedications()));
+                MedicationEditorDialog.showAdd(requireContext(), null, () -> viewModel.loadMedications()));
 
         viewModel.loadMedications();
+    }
+
+    private void observeViewModel() {
+        viewModel.getError().observe(getViewLifecycleOwner(), error -> {
+            if (error != null && !error.isEmpty()) {
+                Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        viewModel.getLoading().observe(getViewLifecycleOwner(), isLoading -> {
+            // Could show/hide loading indicator here if needed
+        });
     }
 
     private void setupViewPager() {
@@ -58,7 +74,7 @@ public class MedicationsFragment extends Fragment {
 
     private void setupTabs() {
         new TabLayoutMediator(binding.tabLayout, binding.viewPager, (tab, position) ->
-                tab.setText(getString(MedicationsViewModel.FilterMode.values()[position].titleRes))).attach();
+                tab.setText(getString(MedicationListViewModel.FilterMode.values()[position].titleRes))).attach();
     }
 
     private void setupToolbar() {

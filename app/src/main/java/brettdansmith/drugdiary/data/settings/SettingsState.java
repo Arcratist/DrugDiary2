@@ -19,10 +19,11 @@ public final class SettingsState {
     public final boolean showProfileSetupGuidance;
     public final boolean assistantMemory;
     public final boolean assistantResponseNotifications;
+    public final boolean assistantEntryFromShareEnabled;
+    public final boolean assistantEntryFromTextSelectionEnabled;
     public final AiProvider assistantProvider;
     public final int referenceCacheDays;
     public final boolean privateMode;
-    public final boolean hideDashboardSensitive;
     public final boolean globalPrivacyCollection;
 
     public SettingsState(
@@ -39,10 +40,11 @@ public final class SettingsState {
             boolean showProfileSetupGuidance,
             boolean assistantMemory,
             boolean assistantResponseNotifications,
+            boolean assistantEntryFromShareEnabled,
+            boolean assistantEntryFromTextSelectionEnabled,
             AiProvider assistantProvider,
             int referenceCacheDays,
             boolean privateMode,
-            boolean hideDashboardSensitive,
             boolean globalPrivacyCollection) {
         this.themeMode = themeMode;
         this.language = language == null ? LanguageOption.SYSTEM : language;
@@ -57,10 +59,11 @@ public final class SettingsState {
         this.showProfileSetupGuidance = showProfileSetupGuidance;
         this.assistantMemory = assistantMemory;
         this.assistantResponseNotifications = assistantResponseNotifications;
+        this.assistantEntryFromShareEnabled = assistantEntryFromShareEnabled;
+        this.assistantEntryFromTextSelectionEnabled = assistantEntryFromTextSelectionEnabled;
         this.assistantProvider = assistantProvider == null ? AiProvider.OPENAI : assistantProvider;
         this.referenceCacheDays = Math.max(1, referenceCacheDays);
         this.privateMode = privateMode;
-        this.hideDashboardSensitive = hideDashboardSensitive;
         this.globalPrivacyCollection = globalPrivacyCollection;
     }
 
@@ -79,9 +82,10 @@ public final class SettingsState {
                 true,
                 true,
                 true,
+                true,
+                true,
                 AiProvider.OPENAI,
                 7,
-                false,
                 false,
                 false);
     }
